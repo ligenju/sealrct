@@ -9,8 +9,8 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.LinearLayout.LayoutParams;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import com.blankj.utilcode.util.ToastUtils;
 import com.xiangchuang.sealrtc.R;
 
 public class LoadDialog extends Dialog {
@@ -63,7 +63,7 @@ public class LoadDialog extends Dialog {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             if (canNotCancel) {
-                ToastUtils.showShort(tipMsg);
+                Toast.makeText(getContext(), tipMsg, Toast.LENGTH_SHORT).show();
                 return true;
             }
         }

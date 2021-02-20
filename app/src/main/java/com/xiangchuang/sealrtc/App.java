@@ -5,7 +5,6 @@ import android.content.Context;
 
 import com.xiangchuang.sealrtc.message.RoomInfoMessage;
 import com.xiangchuang.sealrtc.message.RoomKickOffMessage;
-import com.xiangchuang.sealrtc.message.WhiteBoardInfoMessage;
 import com.xiangchuang.sealrtc.utils.SessionManager;
 import com.xiangchuang.sealrtc.utils.UserUtils;
 import com.xiangchuang.sealrtc.utils.Utils;
@@ -31,7 +30,6 @@ public class App extends Application {
         if (getApplicationInfo().packageName.equals(Utils.getCurProcessName(this))) {
             try {
                 RongIMClient.registerMessageType(RoomInfoMessage.class);
-                RongIMClient.registerMessageType(WhiteBoardInfoMessage.class);
                 RongIMClient.registerMessageType(RoomKickOffMessage.class);
             } catch (Exception e) {
                 e.printStackTrace();

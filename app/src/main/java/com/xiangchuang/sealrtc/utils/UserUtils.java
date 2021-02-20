@@ -95,4 +95,6 @@ public class UserUtils {
     public static final String ENCODE_BIT_RATE_MODE_VBR = "VBR";
     public static final String CUSTOM_FILE_TAG = "RongRTCFileVideo";
 
+    public static final String WHITE_BOARD_KEY = "rongRTCWhite";
+
 }

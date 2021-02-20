@@ -44,7 +44,6 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <include layout="@layout/debug_info_layout" />
 
     <LinearLayout
         android:id="@+id/call_waiting_tips"

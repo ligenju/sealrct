@@ -1,6 +1,7 @@
 package com.xiangchuang.sealrtc.view;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -8,9 +9,8 @@ import android.graphics.Paint.Style;
 import android.graphics.PorterDuff.Mode;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.view.MotionEvent;
-
-import com.xiangchuang.sealrtc.utils.MiscUtil;
 
 import cn.rongcloud.rtc.api.RCRTCEngine;
 import cn.rongcloud.rtc.api.stream.RCRTCVideoView;
@@ -79,7 +79,7 @@ public class LocalVideoView extends RCRTCVideoView {
             }
             float touchX = event.getX();
             float touchY = event.getY();
-            int radius = MiscUtil.convertDpToPixel(getContext(), RECT_RADIUS);
+            int radius = convertDpToPixel(getContext(), RECT_RADIUS);
             rectF.left = touchX - radius;
             rectF.top = touchY - radius;
             rectF.right = touchX + radius;
@@ -89,5 +89,20 @@ public class LocalVideoView extends RCRTCVideoView {
             postInvalidate();
         }
         return true;
+    }
+
+    /**
+     * This method converts dp unit to equivalent pixels, depending on device density.
+     *
+     * @param context Context to get resources and device specific display metrics
+     * @param dp A value in dp (density independent pixels) unit. Which we need to convert into
+     *     pixels
+     * @return A float value to represent px equivalent to dp depending on device density
+     */
+    public static int convertDpToPixel(Context context, float dp) {
+        Resources resources = context.getResources();
+        DisplayMetrics metrics = resources.getDisplayMetrics();
+        int px = (int) (dp * ((float) metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT));
+        return px;
     }
 }

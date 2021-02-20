@@ -19,7 +19,6 @@ import com.xiangchuang.sealrtc.BuildConfig;
 import com.xiangchuang.sealrtc.CallActivity;
 import com.xiangchuang.sealrtc.R;
 import com.xiangchuang.sealrtc.bean.connectedVideoViewEntity;
-import com.xiangchuang.sealrtc.screen_cast.RongRTCScreenCastHelper;
 import com.xiangchuang.sealrtc.utils.RongRTCTalkTypeUtil;
 import com.xiangchuang.sealrtc.utils.SessionManager;
 import com.xiangchuang.sealrtc.utils.Utils;
@@ -54,7 +53,6 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
     private LinearLayout holderContainer;
     private ContainerLayout holderBigContainer;
     private RenderHolder selectedRender;
-    private LinearLayout debugInfoView;
     public boolean isObserver;
     private int screenWidth;
     private int screenHeight;
@@ -90,14 +88,6 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
         holderBigContainer =
                 (ContainerLayout) ((Activity) context).findViewById(R.id.call_render_big_container);
         holderBigContainer.setGestureEvents(this);
-        debugInfoView = (LinearLayout) ((Activity) context).findViewById(R.id.debug_info);
-        //        debugInfoView.setOnClickListener(
-        //                new View.OnClickListener() {
-        //                    @Override
-        //                    public void onClick(View v) {
-        //                        doubleClick(false);
-        //                    }
-        //                });
 
         this.isObserver = isObserver;
 
@@ -117,8 +107,6 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
         if (!BuildConfig.DEBUG) {
             return;
         }
-        debugInfoView.setVisibility(
-                debugInfoView.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
     }
 
     public void touchRender(RenderHolder render) {

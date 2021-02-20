@@ -15,10 +15,12 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
 import cn.rongcloud.rtc.base.RCRTCParamsType.AECMode;
 import cn.rongcloud.rtc.base.RCRTCParamsType.NSLevel;
 import cn.rongcloud.rtc.base.RCRTCParamsType.NSMode;
@@ -112,7 +114,6 @@ public class MainActivity extends RongRTCBaseActivity {
     String userName = "李根聚";
 
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -162,6 +163,11 @@ public class MainActivity extends RongRTCBaseActivity {
             return;
         }
         data = datas;
+        if (!TextUtils.isEmpty(TOKEN) && RongIMClient.getInstance().getCurrentConnectionStatus()
+                == RongIMClient.ConnectionStatusListener.ConnectionStatus.CONNECTED) {
+            connectToRoom();
+            return;
+        }
         RongIMClient.connect(TOKEN, new RongIMClient.ConnectCallback() {
 
 
