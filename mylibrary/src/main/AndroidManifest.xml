@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.xiangchuang.sealrtc">
+    package="com.my.mylibrary">
 
     <uses-permission android:name="android.permission._ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -23,7 +23,6 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
-        android:name=".App"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -32,7 +31,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:replace="android:allowBackup">
-        <activity android:name=".TestActivity"></activity>
+
         <activity
             android:name=".CallActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"

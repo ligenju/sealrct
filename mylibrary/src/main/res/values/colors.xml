@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorAccent">#03DAC5</color>
+    <color name="blink_black">#000000</color>
+    <color name="blink_grey">#CFCFCE</color>
+    <color name="blink_blue">#3A83F5</color>
+    <color name="blink_light_blue">#663A83F5</color>
+    <color name="blink_dark_gray">#656565</color>
+    <color name="colorWhite">#FFFFFF</color>
+    <color name="color_normal_text">#262626</color>
+    <color name="color_divider_line">#E5E5E5</color>
+
+    <!--For DiscreteSeekBar-->
+
+
+</resources>
