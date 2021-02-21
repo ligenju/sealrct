@@ -33,7 +33,6 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
-//    implementation project(path: ':mylibrary')
     //call_kit、call_lib、im_kit、im_lib的版本号码必须一致
     api 'cn.rongcloud.sdk:im_lib:5.0.0' // 即时通讯基础能力库
     api 'cn.rongcloud.sdk:call_lib:5.0.0' // 音视频呼叫信令
