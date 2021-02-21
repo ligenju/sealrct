@@ -146,28 +146,23 @@ public class AudioMixFragment extends Fragment implements SeekBar.OnSeekBarChang
     }
 
     public void onClick(View view) {
-        switch (view.getId()) {
-            case R.id.img_btn_play_pause:
-                boolean selected = img_btn_play_pause.isSelected();
-                img_btn_play_pause.setSelected(!selected);
-                if (selected) {
-                    performPause();
-                } else {
-                    performPlay();
-                }
-                break;
-            case R.id.img_btn_stop:
-                performStop();
-                break;
-            case R.id.btn_select_music:
-                performSelectMusic();
-                break;
-            case R.id.btn_change_mode:
-                performChangeMode();
-                break;
-            case R.id.btn_open_earmonitor:
-                performOpenEarMonitor();
-                break;
+        int id = view.getId();
+        if (id == R.id.img_btn_play_pause) {
+            boolean selected = img_btn_play_pause.isSelected();
+            img_btn_play_pause.setSelected(!selected);
+            if (selected) {
+                performPause();
+            } else {
+                performPlay();
+            }
+        } else if (id == R.id.img_btn_stop) {
+            performStop();
+        } else if (id == R.id.btn_select_music) {
+            performSelectMusic();
+        } else if (id == R.id.btn_change_mode) {
+            performChangeMode();
+        } else if (id == R.id.btn_open_earmonitor) {
+            performOpenEarMonitor();
         }
     }
 
@@ -283,19 +278,16 @@ public class AudioMixFragment extends Fragment implements SeekBar.OnSeekBarChang
 
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-        switch (seekBar.getId()) {
-            case R.id.sb_mic_vol:
-                tv_mic_vol.setText(String.valueOf(progress));
-                RCRTCEngine.getInstance().getDefaultAudioStream().adjustRecordingVolume(progress);
-                break;
-            case R.id.sb_mix_local_vol:
-                tv_mix_local_vol.setText(String.valueOf(progress));
-                RCRTCAudioMixer.getInstance().setPlaybackVolume(progress);
-                break;
-            case R.id.sb_mix_remote_vol:
-                tv_mix_remote_vol.setText(String.valueOf(progress));
-                RCRTCAudioMixer.getInstance().setMixingVolume(progress);
-                break;
+        int id = seekBar.getId();
+        if (id == R.id.sb_mic_vol) {
+            tv_mic_vol.setText(String.valueOf(progress));
+            RCRTCEngine.getInstance().getDefaultAudioStream().adjustRecordingVolume(progress);
+        } else if (id == R.id.sb_mix_local_vol) {
+            tv_mix_local_vol.setText(String.valueOf(progress));
+            RCRTCAudioMixer.getInstance().setPlaybackVolume(progress);
+        } else if (id == R.id.sb_mix_remote_vol) {
+            tv_mix_remote_vol.setText(String.valueOf(progress));
+            RCRTCAudioMixer.getInstance().setMixingVolume(progress);
         }
     }
 

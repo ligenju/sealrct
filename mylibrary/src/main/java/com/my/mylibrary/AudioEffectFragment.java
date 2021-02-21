@@ -163,34 +163,31 @@ public class AudioEffectFragment extends Fragment implements OnSeekBarChangeList
 
     @Override
     public void onCheckedChanged(final CompoundButton compoundButton, boolean checked) {
-        switch (compoundButton.getId()) {
-            case R.id.switch_effect0:
-                if (checked) {
-                    loadEffect(0, compoundButton);
-                    preloaded[0] = true;
-                } else {
-                    effectManager.unloadEffect(0);
-                    preloaded[0] = false;
-                }
-                break;
-            case R.id.switch_effect1:
-                if (checked) {
-                    loadEffect(1, compoundButton);
-                    preloaded[1] = true;
-                } else {
-                    effectManager.unloadEffect(1);
-                    preloaded[1] = false;
-                }
-                break;
-            case R.id.switch_effect2:
-                if (checked) {
-                    loadEffect(2, compoundButton);
-                    preloaded[2] = true;
-                } else {
-                    effectManager.unloadEffect(2);
-                    preloaded[2] = true;
-                }
-                break;
+        int id = compoundButton.getId();
+        if (id == R.id.switch_effect0) {
+            if (checked) {
+                loadEffect(0, compoundButton);
+                preloaded[0] = true;
+            } else {
+                effectManager.unloadEffect(0);
+                preloaded[0] = false;
+            }
+        } else if (id == R.id.switch_effect1) {
+            if (checked) {
+                loadEffect(1, compoundButton);
+                preloaded[1] = true;
+            } else {
+                effectManager.unloadEffect(1);
+                preloaded[1] = false;
+            }
+        } else if (id == R.id.switch_effect2) {
+            if (checked) {
+                loadEffect(2, compoundButton);
+                preloaded[2] = true;
+            } else {
+                effectManager.unloadEffect(2);
+                preloaded[2] = true;
+            }
         }
     }
 
@@ -209,28 +206,21 @@ public class AudioEffectFragment extends Fragment implements OnSeekBarChangeList
     }
 
     public void onClick(View view) {
-        switch (view.getId()) {
-            case R.id.img_btn_effect0_play_pause:
-                playOrPauseEffect((ImageButton) view, 0);
-                break;
-            case R.id.img_btn_effect1_play_pause:
-                playOrPauseEffect((ImageButton) view, 1);
-                break;
-            case R.id.img_btn_effect2_play_pause:
-                playOrPauseEffect((ImageButton) view, 2);
-                break;
-            case R.id.img_btn_effect0_stop:
-                stopEffect(0);
-                break;
-            case R.id.img_btn_effect1_stop:
-                stopEffect(1);
-                break;
-            case R.id.img_btn_effect2_stop:
-                stopEffect(2);
-                break;
-            case R.id.btn_stop_all:
-                stopAllEffects();
-                break;
+        int id = view.getId();
+        if (id == R.id.img_btn_effect0_play_pause) {
+            playOrPauseEffect((ImageButton) view, 0);
+        } else if (id == R.id.img_btn_effect1_play_pause) {
+            playOrPauseEffect((ImageButton) view, 1);
+        } else if (id == R.id.img_btn_effect2_play_pause) {
+            playOrPauseEffect((ImageButton) view, 2);
+        } else if (id == R.id.img_btn_effect0_stop) {
+            stopEffect(0);
+        } else if (id == R.id.img_btn_effect1_stop) {
+            stopEffect(1);
+        } else if (id == R.id.img_btn_effect2_stop) {
+            stopEffect(2);
+        } else if (id == R.id.btn_stop_all) {
+            stopAllEffects();
         }
     }
 
@@ -267,20 +257,16 @@ public class AudioEffectFragment extends Fragment implements OnSeekBarChangeList
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         int volume = progress;
-        switch (seekBar.getId()) {
-            case R.id.sb_effect0_vol:
-                effectManager.setEffectVolume(0, volume);
-                break;
-            case R.id.sb_effect1_vol:
-                effectManager.setEffectVolume(1, volume);
-                break;
-            case R.id.sb_effect2_vol:
-                effectManager.setEffectVolume(2, volume);
-                break;
-            case R.id.sb_global_vol:
-                effectManager.setEffectsVolume(volume);
-                tv_global_vol.setText(String.valueOf(volume));
-                break;
+        int id = seekBar.getId();
+        if (id == R.id.sb_effect0_vol) {
+            effectManager.setEffectVolume(0, volume);
+        } else if (id == R.id.sb_effect1_vol) {
+            effectManager.setEffectVolume(1, volume);
+        } else if (id == R.id.sb_effect2_vol) {
+            effectManager.setEffectVolume(2, volume);
+        } else if (id == R.id.sb_global_vol) {
+            effectManager.setEffectsVolume(volume);
+            tv_global_vol.setText(String.valueOf(volume));
         }
     }
 

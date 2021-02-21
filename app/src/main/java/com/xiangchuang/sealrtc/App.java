@@ -3,13 +3,10 @@ package com.xiangchuang.sealrtc;
 import android.app.Application;
 import android.content.Context;
 
-import com.xiangchuang.sealrtc.message.RoomInfoMessage;
-import com.xiangchuang.sealrtc.message.RoomKickOffMessage;
-import com.xiangchuang.sealrtc.utils.SessionManager;
-import com.xiangchuang.sealrtc.utils.UserUtils;
-import com.xiangchuang.sealrtc.utils.Utils;
+import com.my.mylibrary.RongRTC;
+import com.my.mylibrary.utils.SessionManager;
+import com.my.mylibrary.utils.UserUtils;
 
-import io.rong.imlib.RongIMClient;
 
 /**
  * Description:
@@ -25,7 +22,7 @@ public class App extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        RongRTC.init(this,UserUtils.APP_KEY);
+        RongRTC.init(this, UserUtils.APP_KEY);
 //        Utils.init(this);
 //        RongIMClient.init(this, UserUtils.APP_KEY,false);
 //        if (getApplicationInfo().packageName.equals(Utils.getCurProcessName(this))) {

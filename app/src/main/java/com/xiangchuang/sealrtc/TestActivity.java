@@ -9,7 +9,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 
-import com.xiangchuang.sealrtc.utils.UserUtils;
+import com.my.mylibrary.RongRTC;
+import com.my.mylibrary.utils.UserUtils;
+
 
 public class TestActivity extends AppCompatActivity {
 

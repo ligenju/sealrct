@@ -12,7 +12,6 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
-            <option value="$PROJECT_DIR$/demo_rtc_record_server" />
             <option value="$PROJECT_DIR$/mylibrary" />
           </set>
         </option>

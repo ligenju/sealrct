@@ -1,5 +1,7 @@
 package com.my.mylibrary.utils;
 
+import android.app.Activity;
+
 /**
  * Description:
  * <p>
@@ -9,10 +11,11 @@ public class UserUtils {
     //融云APPKEY
     public static final String APP_KEY = "3argexb63fgue";
     //token 连接融云
-    public static String TOKEN = "";
+    public static String TOKEN = "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com";
     //房间ID=123456  建立房间
     public static String ROOMID = "123456";
-
+    public static String USER_NAME = "123456";
+    public static Activity activity;
     //设置音频视频
     public static boolean KEY_USE_AV_SETTING = true;
     //是音频音乐
@@ -95,6 +98,5 @@ public class UserUtils {
     public static final String ENCODE_BIT_RATE_MODE_VBR = "VBR";
     public static final String CUSTOM_FILE_TAG = "RongRTCFileVideo";
 
-    public static final String WHITE_BOARD_KEY = "rongRTCWhite";
 
 }

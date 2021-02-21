@@ -1,4 +1,3 @@
 include ':mylibrary'
-include ':demo_rtc_record_server'
 include ':app'
 rootProject.name = "Sealrtc"

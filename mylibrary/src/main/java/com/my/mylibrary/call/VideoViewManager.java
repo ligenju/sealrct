@@ -16,6 +16,7 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
 
+import com.my.mylibrary.BuildConfig;
 import com.my.mylibrary.CallActivity;
 import com.my.mylibrary.R;
 import com.my.mylibrary.bean.connectedVideoViewEntity;

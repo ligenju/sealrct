@@ -119,6 +119,7 @@ import io.rong.imlib.model.MessageContent;
 import static com.my.mylibrary.utils.UserUtils.IS_AUTO_TEST;
 import static com.my.mylibrary.utils.UserUtils.IS_BENDI;
 import static com.my.mylibrary.utils.UserUtils.IS_LIVE;
+import static com.my.mylibrary.utils.UserUtils.IS_MIRROR;
 import static com.my.mylibrary.utils.UserUtils.IS_OBSERVER;
 import static com.my.mylibrary.utils.UserUtils.IS_VIDEO_MUTE;
 import static com.my.mylibrary.utils.UserUtils.IS_WATER;
@@ -1835,54 +1836,47 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
 
     @Override
     public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.call_btn_hangup:
-                FinLog.i(TAG, "intendToLeave()-> call_btn_hangup");
-                intendToLeave(true);
-                break;
-            case R.id.menu_switch:
-                RCRTCEngine.getInstance().getDefaultVideoStream().switchCamera(new CameraVideoCapturer.CameraSwitchHandler() {
-                    @Override
-                    public void onCameraSwitchDone(boolean isFrontCamera) {
-                        if (mWaterFilter != null) {
-                            mWaterFilter.angleChange(isFrontCamera);
-                        }
-
+        int id = v.getId();
+        if (id == R.id.call_btn_hangup) {
+            FinLog.i(TAG, "intendToLeave()-> call_btn_hangup");
+            intendToLeave(true);
+        } else if (id == R.id.menu_switch) {
+            RCRTCEngine.getInstance().getDefaultVideoStream().switchCamera(new CameraVideoCapturer.CameraSwitchHandler() {
+                @Override
+                public void onCameraSwitchDone(boolean isFrontCamera) {
+                    if (mWaterFilter != null) {
+                        mWaterFilter.angleChange(isFrontCamera);
                     }
 
-                    @Override
-                    public void onCameraSwitchError(String errorDescription) {
+                }
 
-                    }
-                });
-                break;
-            case R.id.menu_mute_mic:
-                CheckBox checkBox = (CheckBox) v;
-                FinLog.i(TAG, "isMute : " + checkBox.isChecked());
-                onToggleMic(checkBox.isChecked());
-                break;
-            case R.id.menu_mute_speaker:
-                // 为防止频繁快速点击造成音频卡顿，增加点击间隔限制
-                if (Utils.isFastDoubleClick()) {
-                    showToast(R.string.rtc_processing);
-                    return;
+                @Override
+                public void onCameraSwitchError(String errorDescription) {
+
                 }
-                destroyPopupWindow();
-                checkBox = (CheckBox) v;
-                this.muteSpeaker = checkBox.isChecked();
-                if (muteSpeaker) {
-                    showToast(R.string.rtc_toast_switch_to_receiver);
-                } else {
-                    showToast(R.string.rtc_toast_switch_to_speaker);
-                }
-                RCRTCEngine.getInstance().enableSpeaker(!this.muteSpeaker);
-                audioManager.onToggleSpeaker(!muteSpeaker);
-                break;
-            case R.id.call_waiting_tips:
-                toggleActionButtons(buttonHangUp.getVisibility() == View.VISIBLE);
-                break;
-            default:
-                break;
+            });
+        } else if (id == R.id.menu_mute_mic) {
+            CheckBox checkBox = (CheckBox) v;
+            FinLog.i(TAG, "isMute : " + checkBox.isChecked());
+            onToggleMic(checkBox.isChecked());
+        } else if (id == R.id.menu_mute_speaker) {
+            CheckBox checkBox;// 为防止频繁快速点击造成音频卡顿，增加点击间隔限制
+            if (Utils.isFastDoubleClick()) {
+                showToast(R.string.rtc_processing);
+                return;
+            }
+            destroyPopupWindow();
+            checkBox = (CheckBox) v;
+            this.muteSpeaker = checkBox.isChecked();
+            if (muteSpeaker) {
+                showToast(R.string.rtc_toast_switch_to_receiver);
+            } else {
+                showToast(R.string.rtc_toast_switch_to_speaker);
+            }
+            RCRTCEngine.getInstance().enableSpeaker(!this.muteSpeaker);
+            audioManager.onToggleSpeaker(!muteSpeaker);
+        } else if (id == R.id.call_waiting_tips) {
+            toggleActionButtons(buttonHangUp.getVisibility() == View.VISIBLE);
         }
     }
 
@@ -2078,7 +2072,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
      */
     private void onMirrorVideoFrame(RCRTCVideoFrame rtcVideoFrame) {
         boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
-        if (!IS_MIRROR || mMirrorHelper == null || !isFrontCamera) {
+        if (!UserUtils.IS_MIRROR || mMirrorHelper == null || !isFrontCamera) {
             return;
         }
         long start = System.nanoTime();
