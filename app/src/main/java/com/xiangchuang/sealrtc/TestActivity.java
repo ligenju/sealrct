@@ -23,7 +23,15 @@ public class TestActivity extends AppCompatActivity {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
             public void onClick(View v) {
+//                "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com";
                 RongRTC.newInstance().getMediaProjectionService(TestActivity.this);
+            }
+        });
+        findViewById(R.id.tv_add).setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+            @Override
+            public void onClick(View v) {
+                RongRTC.newInstance().start(TestActivity.this, null, "gsSBpAXZZ5OItvR8NSqhVwK82I/z0wqC//TahGlzUxE=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", UserUtils.ROOMID, "观看者", false);
             }
         });
     }
@@ -35,7 +43,7 @@ public class TestActivity extends AppCompatActivity {
             return;
         }
         UserUtils.IS_BENDI = true;
-        RongRTC.newInstance().start(this, data, UserUtils.TOKEN, UserUtils.ROOMID);
+        RongRTC.newInstance().start(this, data, "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", UserUtils.ROOMID, "播放者", true);
     }
 
     @Override

@@ -215,7 +215,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
      * 本地麦克风采集的和远端的pcm音频数据写到文件用于定位问题,写入文件地址为sdcard/webrtc/ 1.使用时 writePcmFileForDebug 设置为true 即可 2.
      * 此功能主要用于排查问题，强烈建议不能发布到生产环境
      */
-    private boolean writePcmFileForDebug = false;
+    private boolean writePcmFileForDebug = true;
     private MirrorImageHelper mMirrorHelper;
     private static Intent dataIntent;
 
@@ -1093,9 +1093,9 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     private void intendToLeave(boolean initiative) {
         FinLog.i(TAG, "intendToLeave()-> " + initiative);
         cancelScreenCast(true);
-        if (null != sharingMap) {
-            sharingMap.clear();
-        }
+//        if (null != sharingMap) {
+//            sharingMap.clear();
+//        }
         if (initiative) {
             selectAdmin();
         } else {
@@ -1935,7 +1935,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         }
         screenCastHelper.stop();
         screenCastHelper = null;
-       /* localUser.unpublishStream(screenOutputStream, new IRCRTCResultCallback() {
+        localUser.unpublishStream(screenOutputStream, new IRCRTCResultCallback() {
             @Override
             public void onSuccess() {
                 postUIThread(new Runnable() {
@@ -1963,9 +1963,9 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                     }
                 });
             }
-        });*/
-        renderViewManager.removeVideoView(true, myUserId, screenOutputStream.getTag());
-        screenOutputStream = null;
+        });
+//        renderViewManager.removeVideoView(true, myUserId, screenOutputStream.getTag());
+//        screenOutputStream = null;
         if (isHangup) {
             disconnect();
         }

@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <com.xiangchuang.sealrtc.view.ContainerLayout
+    <com.my.mylibrary.view.ContainerLayout
         android:id="@+id/call_render_big_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

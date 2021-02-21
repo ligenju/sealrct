@@ -12,9 +12,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.text.TextUtils;
 import android.view.Surface;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+
+import com.my.mylibrary.utils.UserUtils;
 
 import cn.rongcloud.rtc.api.RCRTCEngine;
 import cn.rongcloud.rtc.api.callback.IRCRTCVideoSource;
@@ -54,8 +57,14 @@ public class RongRTCScreenCastHelper {
 
         this.mediaProjectionManager = (MediaProjectionManager)
                 appContext.getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-        this.mMediaProjection = mediaProjectionManager
-                .getMediaProjection(Activity.RESULT_OK, this.mMediaProjectionData);
+        try {
+            this.mMediaProjection = mediaProjectionManager
+                    .getMediaProjection(Activity.RESULT_OK, this.mMediaProjectionData);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(UserUtils.activity, "权限适配有问题" + e.toString(), Toast.LENGTH_SHORT).show();
+            return;
+        }
         this.mVirtualDisplay = createVirtualDisplay(width, height);
         outputStream.setSource(new IRCRTCVideoSource() {
             @Override

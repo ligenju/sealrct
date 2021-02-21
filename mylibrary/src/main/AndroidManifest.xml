@@ -29,7 +29,6 @@
         <activity
             android:name=".CallActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
-            android:label="@string/app_name"
             android:launchMode="singleTop"
             android:resizeableActivity="true" />
     </application>

@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
-        <com.xiangchuang.sealrtc.view.ProgressWheel
+        <com.my.mylibrary.view.ProgressWheel
             android:layout_width="110dp"
             android:layout_height="110dp"
             android:layout_centerHorizontal="true"
