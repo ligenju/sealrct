@@ -18,6 +18,7 @@ import androidx.annotation.RequiresApi;
 
 import com.my.mylibrary.bean.ItemModel;
 import com.my.mylibrary.bean.UserInfo;
+import com.my.mylibrary.broadcast.HomeWatcherReceiver;
 import com.my.mylibrary.call.AppRTCAudioManager;
 import com.my.mylibrary.dialog.PromptDialog;
 import com.my.mylibrary.message.RoomInfoMessage;
@@ -170,13 +171,28 @@ public class RongRTC {
         return true;
     }
 
+    public boolean isConnected() {
+        if (!TextUtils.isEmpty(UserUtils.TOKEN) && RongIMClient.getInstance().getCurrentConnectionStatus()
+                == RongIMClient.ConnectionStatusListener.ConnectionStatus.CONNECTED)
+            return true;
+
+        return false;
+    }
+
     public void start(Activity activity, Intent datas, String token, String roomId, String username, boolean isShared) {
+        HomeWatcherReceiver.registerHomeKeyReceiver(activity);
         data = datas;
         UserUtils.activity = activity;
         UserUtils.ROOMID = roomId;
         UserUtils.TOKEN = token;
         UserUtils.USER_NAME = username;
         UserUtils.IS_BENDI = isShared;
+
+        if (isShared) {
+            UserUtils.CONNECTION_STATUS = 1;
+        } else {
+            UserUtils.CONNECTION_STATUS = 2;
+        }
         if (!TextUtils.isEmpty(UserUtils.TOKEN) && RongIMClient.getInstance().getCurrentConnectionStatus()
                 == RongIMClient.ConnectionStatusListener.ConnectionStatus.CONNECTED) {
             connectToRoom();
@@ -214,6 +230,28 @@ public class RongRTC {
                 Log.d(TAG, "onDatabaseOpened: ");
             }
         });
+    }
+
+    /**
+     * 准备离开当前房间
+     *
+     * @param initiative 是否主动退出，false为被踢的情况
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void intendToLeave(boolean initiative) {
+        FinLog.i(TAG, "intendToLeave()-> " + initiative);
+        HomeWatcherReceiver.unregisterHomeKeyReceiver(UserUtils.activity);
+        cancelScreenCast(true);
+        if (initiative) {
+            selectAdmin();
+        } else {
+            kicked = true;
+        }
+        RCRTCAudioMixer.getInstance().stop();
+        // 当前用户是观察者 或 离开房间时还有其他用户存在，直接退出
+        if (screenOutputStream == null || UserUtils.IS_BENDI) {
+            disconnect();
+        }
     }
 
     /**
@@ -1103,26 +1141,6 @@ public class RongRTC {
         return "";
     }
 
-    /**
-     * 准备离开当前房间
-     *
-     * @param initiative 是否主动退出，false为被踢的情况
-     */
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    private void intendToLeave(boolean initiative) {
-        FinLog.i(TAG, "intendToLeave()-> " + initiative);
-        cancelScreenCast(true);
-        if (initiative) {
-            selectAdmin();
-        } else {
-            kicked = true;
-        }
-        RCRTCAudioMixer.getInstance().stop();
-        // 当前用户是观察者 或 离开房间时还有其他用户存在，直接退出
-        if (screenOutputStream == null || UserUtils.IS_BENDI) {
-            disconnect();
-        }
-    }
 
     private void selectAdmin() {
         if (!TextUtils.equals(myUserId, adminUserId) || mMembersMap.size() <= 1) return;
@@ -1163,6 +1181,7 @@ public class RongRTC {
                             audioManager.close();
                             audioManager = null;
                         }
+                        UserUtils.CONNECTION_STATUS = 0;
                         onStop();
                         onDestroy();
                     }
@@ -1179,6 +1198,7 @@ public class RongRTC {
                             audioManager.close();
                             audioManager = null;
                         }
+                        UserUtils.CONNECTION_STATUS = 0;
                         onStop();
                         onDestroy();
                     }

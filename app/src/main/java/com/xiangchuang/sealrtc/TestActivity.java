@@ -7,10 +7,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 
 import com.my.mylibrary.RongRTC;
 import com.my.mylibrary.utils.UserUtils;
+
+import io.rong.imlib.RongIMClient;
 
 
 public class TestActivity extends AppCompatActivity {
@@ -24,14 +27,18 @@ public class TestActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 //                "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com";
-                RongRTC.newInstance().getMediaProjectionService(TestActivity.this);
+                if (UserUtils.CONNECTION_STATUS==0){
+                    RongRTC.newInstance().getMediaProjectionService(TestActivity.this);
+                }else {
+                    RongRTC.newInstance().intendToLeave(true);
+                }
             }
         });
         findViewById(R.id.tv_add).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
             public void onClick(View v) {
-                RongRTC.newInstance().start(TestActivity.this, null, "gsSBpAXZZ5OItvR8NSqhVwK82I/z0wqC//TahGlzUxE=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", UserUtils.ROOMID, "观看者", false);
+                RongRTC.newInstance().start(TestActivity.this, null, "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", UserUtils.ROOMID, "观看者", false);
             }
         });
     }
@@ -43,7 +50,7 @@ public class TestActivity extends AppCompatActivity {
             return;
         }
         UserUtils.IS_BENDI = true;
-        RongRTC.newInstance().start(this, data, "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", UserUtils.ROOMID, "播放者", true);
+        RongRTC.newInstance().start(this, data, "gsSBpAXZZ5OItvR8NSqhVwK82I/z0wqC//TahGlzUxE=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", UserUtils.ROOMID, "播放者", true);
     }
 
     @Override

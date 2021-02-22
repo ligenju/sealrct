@@ -16,6 +16,8 @@ public class UserUtils {
     public static String ROOMID = "123456";
     public static String USER_NAME = "123456";
     public static Activity activity;
+    //连接状态 0未连接  1=共享   2=视频检查
+    public static int CONNECTION_STATUS=0;
     //设置音频视频
     public static boolean KEY_USE_AV_SETTING = true;
     //是音频音乐
