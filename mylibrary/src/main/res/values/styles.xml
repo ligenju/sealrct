@@ -7,5 +7,10 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-
+    <style name="style_call_menu_btn">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:layout_marginTop">@dimen/checkbox_spacing</item>
+        <item name="android:button">@null</item>
+    </style>
 </resources>

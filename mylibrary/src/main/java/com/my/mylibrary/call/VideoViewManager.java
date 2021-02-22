@@ -724,11 +724,6 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
                 try {
                     selectedUserid.clear();
                     selectedUserid.add(userid);
-                    if (mActivity.isSharing(userid)) {
-                        //                        Toast.makeText(context,
-                        // context.getResources().getString(R.string.meeting_control_OpenWiteBoard),
-                        // Toast.LENGTH_SHORT).show();
-                    }
                 } catch (Resources.NotFoundException e) {
                     e.printStackTrace();
                 }
@@ -736,9 +731,9 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
         }
     }
 
-    private CallActivity mActivity = null;
+    private Activity mActivity = null;
 
-    public void setActivity(CallActivity activity) {
+    public void setActivity(Activity activity) {
         mActivity = activity;
     }
 

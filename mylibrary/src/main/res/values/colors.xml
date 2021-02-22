@@ -11,7 +11,9 @@
     <color name="colorWhite">#FFFFFF</color>
     <color name="color_normal_text">#262626</color>
     <color name="color_divider_line">#E5E5E5</color>
-
+    <color name="transparent">#00000000</color>
+    <color name="blink_yellow">#EEC900</color>
+    <color name="blink_text_green">#33CCFF</color>
     <!--For DiscreteSeekBar-->
 
 

@@ -44,18 +44,13 @@ public class RongRTCBaseActivity extends Activity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                showToast(msg);
+                Toast.makeText(RongRTCBaseActivity.this, msg, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     protected void showToast(final String msg) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(RongRTCBaseActivity.this, msg, Toast.LENGTH_SHORT).show();
-            }
-        });
+        Toast.makeText(RongRTCBaseActivity.this, msg, Toast.LENGTH_SHORT).show();
     }
 
     protected void postUIThread(final Runnable runnable) {

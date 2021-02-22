@@ -310,10 +310,27 @@ public class RongRTC {
         }
     }
 
+    private OnRongYunConnectionMonitoring onRongYunConnectionMonitoring;
+
+    public void setOnRongYunConnectionMonitoring(OnRongYunConnectionMonitoring onRongYunConnectionMonitoring) {
+        this.onRongYunConnectionMonitoring = onRongYunConnectionMonitoring;
+    }
+
+    //融云连接监听
+    public interface OnRongYunConnectionMonitoring {
+        /**
+         * 连接房间成功
+         * isAdmin= true== 只有一个人，下一个页面需要设置管理员id
+         */
+        void onConnectionSucceeded(boolean isAdmin);
+
+        //连接房间失败
+        void onConnectionFailure(String err);
+    }
+
     private void connectToRoom() {
         if (RongIMClient.getInstance().getCurrentConnectionStatus()
                 == RongIMClient.ConnectionStatusListener.ConnectionStatus.CONNECTED) {
-//            LoadDialog.show(UserUtils.activity);
             initOrUpdateRTCEngine();
 
             RCRTCRoomType roomType;
@@ -326,13 +343,45 @@ public class RongRTC {
             RCRTCEngine.getInstance().joinRoom(UserUtils.ROOMID, roomType, new IRCRTCResultDataCallback<RCRTCRoom>() {
                 @Override
                 public void onSuccess(RCRTCRoom room) {
-//                    LoadDialog.dismiss(MainActivity.this);
-                    String toastMsg = UserUtils.activity.getResources().getString(R.string.join_room_success);
-                    Toast.makeText(UserUtils.activity, toastMsg, Toast.LENGTH_SHORT).show();
-                    if (!UserUtils.IS_BENDI)
-                        startCallActivity(UserUtils.IS_VIDEO_MUTE, UserUtils.IS_OBSERVER);
-                    else
-                        createConnectionRoom(UserUtils.IS_VIDEO_MUTE, UserUtils.IS_OBSERVER);
+                    //设置房间属性
+                    RCRTCRoom rooms = RCRTCEngine.getInstance().getRoom();
+                    int joinMode = RoomInfoMessage.JoinMode.AUDIO_VIDEO;
+                    if (UserUtils.IS_VIDEO_MUTE) {
+                        joinMode = RoomInfoMessage.JoinMode.AUDIO;
+                    }
+                    if (UserUtils.IS_OBSERVER) {
+                        joinMode = RoomInfoMessage.JoinMode.OBSERVER;
+                    }
+                    String userId = rooms.getLocalUser().getUserId();
+                    int remoteUserCount = rooms.getRemoteUsers() != null ? rooms.getRemoteUsers().size() : 0;
+                    boolean isAdmin = remoteUserCount == 0;
+                    RoomInfoMessage roomInfoMessage = new RoomInfoMessage(
+                            userId, UserUtils.USER_NAME, joinMode, System.currentTimeMillis(), isAdmin);
+                    JSONObject jsonObject = new JSONObject();
+                    try {
+                        jsonObject.put("userId", userId);
+                        jsonObject.put("userName", UserUtils.USER_NAME);
+                        jsonObject.put("joinMode", joinMode);
+                        jsonObject.put("joinTime", System.currentTimeMillis());
+                        jsonObject.put("master", isAdmin ? 1 : 0);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    rooms.setRoomAttribute(userId, jsonObject.toString(), roomInfoMessage, new IRCRTCResultCallback() {
+                        @Override
+                        public void onSuccess() {
+
+                        }
+
+                        @Override
+                        public void onFailed(RTCErrorCode errorCode) {
+
+                        }
+                    });
+                    if (UserUtils.IS_BENDI) {
+                        initManager();
+                    }
+                    onRongYunConnectionMonitoring.onConnectionSucceeded(isAdmin);
 
                     int userCount = room.getRemoteUsers().size();
                     Log.d(TAG, "onSuccess: 房间人数==" + userCount);
@@ -340,14 +389,13 @@ public class RongRTC {
 
                 @Override
                 public void onFailed(RTCErrorCode errorCode) {
-//                    LoadDialog.dismiss(MainActivity.this);
                     String toastMsg;
                     if (errorCode == RTCErrorCode.ServerUserBlocked) {
                         toastMsg = UserUtils.activity.getResources().getString(R.string.rtc_dialog_forbidden_by_server);
                     } else {
                         toastMsg = UserUtils.activity.getResources().getString(R.string.join_room_failed);
                     }
-                    Toast.makeText(UserUtils.activity, toastMsg, Toast.LENGTH_SHORT).show();
+                    onRongYunConnectionMonitoring.onConnectionFailure(toastMsg);
                 }
             });
         } else {
@@ -485,7 +533,6 @@ public class RongRTC {
         Intent intent = null;
 //        使用会议界面进行音视频
         intent = new Intent(UserUtils.activity, CallActivity.class);
-        intent.putExtra(CallActivity.EXTRA_USER_NAME, UserUtils.USER_NAME);
         RCRTCRoom room = RCRTCEngine.getInstance().getRoom();
         int joinMode = RoomInfoMessage.JoinMode.AUDIO_VIDEO;
         if (muteVideo) {
@@ -562,8 +609,6 @@ public class RongRTC {
             }
         });
 
-
-        initManager();
     }
 
     private void initManager() {

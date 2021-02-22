@@ -32,6 +32,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:replace="android:allowBackup">
+        <activity android:name=".MeetingActivity"></activity>
         <activity android:name=".TestActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -40,11 +41,9 @@
             </intent-filter>
         </activity>
 
-
         <meta-data
             android:name="com.google.android.actions"
             android:resource="@xml/network_security_config" />
-
     </application>
 
 </manifest>

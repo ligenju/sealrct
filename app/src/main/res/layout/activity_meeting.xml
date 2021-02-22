@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:ignore="MissingDefaultResource">
+
+    <com.my.mylibrary.view.ContainerLayout
+        android:id="@+id/call_render_big_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerInParent="true" />
+
+    <LinearLayout
+        android:id="@+id/call_layout_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/call_room_number"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/room_number"
+            android:textColor="#ffffff"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/call_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/connection_duration"
+            android:textColor="#C89E50"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/call_net_speed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/network_traffic"
+            android:textColor="#ffffff"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/call_waiting_tips"
+        android:layout_width="240dp"
+        android:layout_height="80dp"
+        android:layout_centerInParent="true"
+        android:background="@drawable/shape_wait_tips"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/waiting_user_join"
+            android:textColor="#ffffff"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="..."
+            android:textColor="#ffffff"
+            android:textSize="16sp" />
+
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_network_status_tips"
+        android:layout_width="240dp"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:background="@drawable/shape_wait_tips"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/textView_network_status_tips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="20dp"
+            android:text="@string/waiting_user_join"
+            android:textColor="#ffffff"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <RelativeLayout
+        android:id="@+id/rel_sv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <HorizontalScrollView
+            android:id="@+id/horizontalScrollView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:id="@+id/call_reder_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/colorWhite"
+                android:orientation="horizontal"
+                android:visibility="visible" />
+        </HorizontalScrollView>
+
+        <ScrollView
+            android:id="@+id/scrollView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone">
+
+        </ScrollView>
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/call_whiteboard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="30dp"
+        android:visibility="gone">
+
+    </RelativeLayout>
+
+
+    <ScrollView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+        android:paddingLeft="8dp">
+
+        <RelativeLayout
+            android:id="@+id/call_more_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="18dp"
+            android:orientation="vertical">
+
+            <androidx.appcompat.widget.AppCompatCheckBox
+                android:id="@+id/btn_switch_videosize"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginTop="@dimen/checkbox_spacing"
+                android:background="@drawable/icon_hd"
+                android:button="@null"
+                android:checked="false" />
+
+            <ImageView
+                android:id="@+id/btn_modeSelect"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_below="@+id/btn_switch_videosize"
+                android:background="@drawable/selector_checkbox_request_changevideomode"
+                android:button="@null" />
+
+            <androidx.appcompat.widget.AppCompatCheckBox
+                android:id="@+id/menu_custom_audio"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_below="@+id/btn_modeSelect"
+                android:layout_marginTop="@dimen/checkbox_spacing"
+                android:background="@drawable/selector_checkbox_custom_audio_stream"
+                android:button="@null"
+                android:checked="false" />
+
+            <androidx.appcompat.widget.AppCompatCheckBox
+                android:id="@+id/menu_switch"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_below="@+id/menu_custom_audio"
+                android:layout_marginTop="@dimen/checkbox_spacing"
+                android:background="@drawable/selector_switch_camera"
+                android:button="@null"
+                android:checked="false" />
+
+
+            <androidx.appcompat.widget.AppCompatCheckBox
+                android:id="@+id/menu_mute_speaker"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_below="@+id/menu_switch"
+                android:layout_marginTop="@dimen/checkbox_spacing"
+                android:background="@drawable/selector_checkbox_capture"
+                android:button="@null"
+                android:checked="false" />
+
+            <ImageButton
+                android:id="@+id/menu_members"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_below="@+id/menu_mute_speaker"
+                android:layout_marginTop="@dimen/checkbox_spacing"
+                android:background="@drawable/img_members"
+                android:button="@null"
+                android:checked="false" />
+
+            <androidx.appcompat.widget.AppCompatCheckBox
+                android:id="@+id/menu_switch_speech_music"
+                style="@style/style_call_menu_btn"
+                android:layout_below="@id/menu_members"
+                android:background="@drawable/selector_checkbox_custom_audio_stream"
+                android:checked="false"
+                android:visibility="visible" />
+
+
+            <androidx.appcompat.widget.AppCompatCheckBox
+                android:id="@+id/menu_screen"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_below="@+id/menu_switch_speech_music"
+                android:layout_marginTop="@dimen/checkbox_spacing"
+                android:background="@drawable/selector_switch_screen_cast"
+                android:button="@null"
+                android:checked="false"
+                android:visibility="visible" />
+        </RelativeLayout>
+    </ScrollView>
+
+    <Button
+        android:id="@+id/call_btn_hangup"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/selector_button_hangup" />
+
+    <androidx.appcompat.widget.AppCompatCheckBox
+        android:id="@+id/menu_close"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="@dimen/checkbox_spacing"
+        android:background="@drawable/selector_checkbox_close_camera"
+        android:button="@null"
+        android:checked="false" />
+
+
+    <androidx.appcompat.widget.AppCompatCheckBox
+        android:id="@+id/menu_mute_mic"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="@dimen/checkbox_spacing"
+        android:background="@drawable/selector_checkbox_mute"
+        android:button="@null"
+        android:checked="false" />
+
+</RelativeLayout>
