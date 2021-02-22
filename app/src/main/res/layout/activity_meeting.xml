@@ -153,7 +153,8 @@
                 android:layout_marginTop="@dimen/checkbox_spacing"
                 android:background="@drawable/icon_hd"
                 android:button="@null"
-                android:checked="false" />
+                android:checked="false"
+                android:visibility="gone" />
 
             <ImageView
                 android:id="@+id/btn_modeSelect"
@@ -171,7 +172,8 @@
                 android:layout_marginTop="@dimen/checkbox_spacing"
                 android:background="@drawable/selector_checkbox_custom_audio_stream"
                 android:button="@null"
-                android:checked="false" />
+                android:checked="false"
+                android:visibility="gone" />
 
             <androidx.appcompat.widget.AppCompatCheckBox
                 android:id="@+id/menu_switch"
@@ -204,20 +206,12 @@
                 android:button="@null"
                 android:checked="false" />
 
-            <androidx.appcompat.widget.AppCompatCheckBox
-                android:id="@+id/menu_switch_speech_music"
-                style="@style/style_call_menu_btn"
-                android:layout_below="@id/menu_members"
-                android:background="@drawable/selector_checkbox_custom_audio_stream"
-                android:checked="false"
-                android:visibility="visible" />
-
 
             <androidx.appcompat.widget.AppCompatCheckBox
                 android:id="@+id/menu_screen"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
-                android:layout_below="@+id/menu_switch_speech_music"
+                android:layout_below="@+id/menu_members"
                 android:layout_marginTop="@dimen/checkbox_spacing"
                 android:background="@drawable/selector_switch_screen_cast"
                 android:button="@null"

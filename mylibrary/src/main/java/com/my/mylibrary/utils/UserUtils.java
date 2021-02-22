@@ -29,7 +29,7 @@ public class UserUtils {
     //直播
     public static boolean IS_LIVE = false;
     // 进入房间时是否关闭摄像头
-    public static boolean IS_VIDEO_MUTE = true;
+    public static boolean IS_VIDEO_MUTE = false;
     // 当前房间大于30人时，只能以观察者身份加入房间，不能发布音视频流，app层产品逻辑
     public static boolean IS_OBSERVER = false;
     //是否是共享屏幕

@@ -43,10 +43,14 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.my.mylibrary.AudioEffectFragment;
+import com.my.mylibrary.AudioMixActivity;
 import com.my.mylibrary.AudioMixFragment;
+import com.my.mylibrary.CallActivity;
 import com.my.mylibrary.LiveDataOperator;
+import com.my.mylibrary.RongRTC;
 import com.my.mylibrary.base.RongRTCBaseActivity;
 import com.my.mylibrary.bean.ItemModel;
 import com.my.mylibrary.bean.UserInfo;
@@ -72,8 +76,10 @@ import com.my.mylibrary.utils.Utils;
 import com.my.mylibrary.view.LocalVideoView;
 import com.my.mylibrary.watersign.TextureHelper;
 import com.my.mylibrary.watersign.WaterMarkFilter;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -82,6 +88,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
 import cn.rongcloud.rtc.api.RCRTCAudioMixer;
 import cn.rongcloud.rtc.api.RCRTCEngine;
 import cn.rongcloud.rtc.api.RCRTCLocalUser;
@@ -136,7 +143,7 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
             "android.permission.BLUETOOTH_ADMIN",
             "android.permission.BLUETOOTH"
     };
-    private boolean isInRoom;
+    private boolean isInRoom = true;
     private RCRTCVideoOutputStream screenOutputStream;
     private RongRTCScreenCastHelper screenCastHelper;
 
@@ -163,7 +170,7 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
     private AppCompatCheckBox btnMuteSpeaker;
     private AppCompatCheckBox btnCloseCamera;
     private AppCompatCheckBox btnMuteMic;
-    private AppCompatCheckBox btnSwitchSpeechMusic;
+    private AppCompatCheckBox btnCustomAudioStream;
     private ImageButton btnMembers;
     private ImageView iv_modeSelect;
     private List<ItemModel> mMembers = new ArrayList<>();
@@ -208,6 +215,9 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
     private VideoSizeListDialog mVideoSizeDialog;
 
     List<StatusBean> statusBeanList = new ArrayList<>();
+    LocalVideoView localSurface;
+    private RCRTCLiveInfo liveInfo;
+
 
     @Override
     protected void onStart() {
@@ -339,7 +349,6 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
         iv_modeSelect = (ImageView) findViewById(R.id.btn_modeSelect);
         btnSwitchCamera = (AppCompatCheckBox) findViewById(R.id.menu_switch);
         btnMuteSpeaker = (AppCompatCheckBox) findViewById(R.id.menu_mute_speaker);
-        btnSwitchSpeechMusic = (AppCompatCheckBox) findViewById(R.id.menu_switch_speech_music);
         titleContainer = (LinearLayout) findViewById(R.id.call_layout_title);
         call_reder_container = (LinearLayout) findViewById(R.id.call_reder_container);
         textViewRoomNumber = (TextView) findViewById(R.id.call_room_number);
@@ -347,6 +356,7 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
         textViewNetSpeed = (TextView) findViewById(R.id.call_net_speed);
         buttonHangUp = (Button) findViewById(R.id.call_btn_hangup);
         scrollView = (ScrollView) findViewById(R.id.scrollView);
+        btnCustomAudioStream = (AppCompatCheckBox) findViewById(R.id.menu_custom_audio);
         horizontalScrollView = (HorizontalScrollView) findViewById(R.id.horizontalScrollView);
         btnCloseCamera = (AppCompatCheckBox) findViewById(R.id.menu_close);
         btnMuteMic = (AppCompatCheckBox) findViewById(R.id.menu_mute_mic);
@@ -377,6 +387,12 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
 
         renderViewManager = new VideoViewManager();
         renderViewManager.setActivity(MeetingActivity.this);
+        renderViewManager.setOnToggleListener(new VideoViewManager.OnToggleListener() {
+            @Override
+            public void onToggleTips(boolean isHasConnectedUser) {
+                setWaitingTipsVisiable(isHasConnectedUser);
+            }
+        });
         if (BuildConfig.DEBUG) {
             textViewNetSpeed.setVisibility(View.VISIBLE);
         } else {
@@ -387,8 +403,8 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
         buttonHangUp.setOnClickListener(this);
         btnSwitchCamera.setOnClickListener(this);
         btnCloseCamera.setOnClickListener(this);
+        btnCustomAudioStream.setOnClickListener(this);
         btnMuteMic.setOnClickListener(this);
-        btnSwitchSpeechMusic.setOnClickListener(this);
         btnMuteSpeaker.setOnClickListener(this);
         btnMembers.setOnClickListener(this);
         btnScreenCast.setOnClickListener(this);
@@ -1005,7 +1021,6 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
     }
 
 
-
     private void destroyPopupWindow() {
         if (null != popupWindow && popupWindow.isShowing()) {
             popupWindow.dismiss();
@@ -1047,8 +1062,7 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
     private void checkPermissions() {
         unGrantedPermissions = new ArrayList();
         for (String permission : MANDATORY_PERMISSIONS) {
-            if (ContextCompat.checkSelfPermission(this, permission)
-                    != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
                 unGrantedPermissions.add(permission);
             }
         }
@@ -1071,7 +1085,6 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
         for (String permission : unGrantedPermissions) {
             if (!ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
                 showToast(getString(R.string.PermissionStr) + permission + getString(R.string.plsopenit));
-                finish();
             } else ActivityCompat.requestPermissions(this, new String[]{permission}, 0);
         }
         if (unGrantedPermissions.size() == 0) {
@@ -1079,7 +1092,6 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
         }
     }
 
-    LocalVideoView localSurface;
 
     private void startCall() {
         try {
@@ -1132,7 +1144,6 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
         }
     }
 
-    private RCRTCLiveInfo liveInfo;
 
     private void publishResource() {
         if (UserUtils.IS_OBSERVER) {
@@ -1850,10 +1861,6 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
                 FinLog.i(TAG, "isMute : " + checkBox.isChecked());
                 onToggleMic(checkBox.isChecked());
                 break;
-            case R.id.menu_switch_speech_music://音乐
-                checkBox = (CheckBox) v;
-                Log.d(TAG, "setMode check " + checkBox.isChecked());
-                break;
             case R.id.menu_mute_speaker:
                 // 为防止频繁快速点击造成音频卡顿，增加点击间隔限制
                 if (Utils.isFastDoubleClick()) {
@@ -1899,7 +1906,16 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
                 }
                 mVideoSizeDialog.show(getFragmentManager(), "VideoSizeListDialog");
                 break;
-
+            case R.id.menu_custom_audio:
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                    Toast.makeText(this, R.string.mix_audio_tips, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                btnCustomAudioStream.setSelected(true);
+                //                toggleActionButtons(true);
+                RongRTC.newInstance().startAudioMixActivity(this);
+                overridePendingTransition(R.anim.mix_slide_up, 0);
+                break;
             default:
                 break;
         }

@@ -310,13 +310,18 @@ public class RongRTC {
         }
     }
 
+    public void startAudioMixActivity(Activity activity) {
+        activity.startActivity(new Intent(activity, AudioMixActivity.class));
+    }
+
     private OnRongYunConnectionMonitoring onRongYunConnectionMonitoring;
 
+    //融云连接监听
     public void setOnRongYunConnectionMonitoring(OnRongYunConnectionMonitoring onRongYunConnectionMonitoring) {
         this.onRongYunConnectionMonitoring = onRongYunConnectionMonitoring;
     }
 
-    //融云连接监听
+
     public interface OnRongYunConnectionMonitoring {
         /**
          * 连接房间成功

@@ -40,7 +40,7 @@ public class TestActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 //                "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com";
-                RongRTC.newInstance().start(TestActivity.this, null, "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", "123456", "夫子", false);
+                RongRTC.newInstance().start(TestActivity.this, null, "gsSBpAXZZ5OItvR8NSqhVwK82I/z0wqC//TahGlzUxE=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", "123456", "夫子", false);
             }
         });
         RongRTC.newInstance().setOnRongYunConnectionMonitoring(new RongRTC.OnRongYunConnectionMonitoring() {
