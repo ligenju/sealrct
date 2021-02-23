@@ -379,7 +379,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                 btnSwitchCamera.setEnabled(false);
             } else {
                 btnSwitchCamera.setEnabled(true);
-                btnSwitchCamera.setVisibility(View.VISIBLE);
+//                btnSwitchCamera.setVisibility(View.VISIBLE);
             }
         }
     }

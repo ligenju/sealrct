@@ -11,7 +11,7 @@ public class UserUtils {
     //融云APPKEY
     public static final String APP_KEY = "3argexb63fgue";
     //token 连接融云
-    public static String TOKEN = "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com";
+    public static String TOKEN = "";
     //房间ID=123456  建立房间
     public static String ROOMID = "123456";
     public static String USER_NAME = "123456";
@@ -29,7 +29,7 @@ public class UserUtils {
     //直播
     public static boolean IS_LIVE = false;
     // 进入房间时是否关闭摄像头
-    public static boolean IS_VIDEO_MUTE = false;
+    public static boolean IS_VIDEO_MUTE = true;
     // 当前房间大于30人时，只能以观察者身份加入房间，不能发布音视频流，app层产品逻辑
     public static boolean IS_OBSERVER = false;
     //是否是共享屏幕

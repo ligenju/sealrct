@@ -27,12 +27,7 @@ public class TestActivity extends AppCompatActivity {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
             public void onClick(View v) {
-//                "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com";
-                if (UserUtils.CONNECTION_STATUS == 0) {
                     RongRTC.newInstance().getMediaProjectionService(TestActivity.this);
-                } else {
-                    RongRTC.newInstance().intendToLeave(true);
-                }
             }
         });
         findViewById(R.id.tv_start).setOnClickListener(new View.OnClickListener() {
@@ -46,9 +41,9 @@ public class TestActivity extends AppCompatActivity {
         RongRTC.newInstance().setOnRongYunConnectionMonitoring(new RongRTC.OnRongYunConnectionMonitoring() {
             @Override
             public void onConnectionSucceeded(boolean isAdmin) {
-                Intent intent = new Intent(TestActivity.this, MeetingActivity.class);
-                intent.putExtra(MeetingActivity.EXTRA_IS_MASTER, isAdmin);
-                startActivity(intent);
+//                Intent intent = new Intent(TestActivity.this, MeetingActivity.class);
+//                intent.putExtra(MeetingActivity.EXTRA_IS_MASTER, isAdmin);
+//                startActivity(intent);
             }
 
             @Override
@@ -72,7 +67,7 @@ public class TestActivity extends AppCompatActivity {
             return;
         }
         UserUtils.IS_BENDI = true;
-        RongRTC.newInstance().start(this, data, "gsSBpAXZZ5OItvR8NSqhVwK82I/z0wqC//TahGlzUxE=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", UserUtils.ROOMID, "播放者", true);
+        RongRTC.newInstance().start(this, data, "gsSBpAXZZ5OItvR8NSqhVwK82I/z0wqC//TahGlzUxE=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", "123456", "播放者", true);
     }
 
     @Override

@@ -385,6 +385,8 @@ public class RongRTC {
                     });
                     if (UserUtils.IS_BENDI) {
                         initManager();
+                    }else {
+                        startCallActivity(isAdmin);
                     }
                     onRongYunConnectionMonitoring.onConnectionSucceeded(isAdmin);
 
@@ -534,91 +536,18 @@ public class RongRTC {
 
     private boolean HeadsetPlugReceiverState = false; // false：开启音视频之前已经连接上耳机
 
-    private void startCallActivity(boolean muteVideo, boolean observer) {
+    private void startCallActivity(boolean isRemoteUser) {
         Intent intent = null;
 //        使用会议界面进行音视频
         intent = new Intent(UserUtils.activity, CallActivity.class);
-        RCRTCRoom room = RCRTCEngine.getInstance().getRoom();
-        int joinMode = RoomInfoMessage.JoinMode.AUDIO_VIDEO;
-        if (muteVideo) {
-            joinMode = RoomInfoMessage.JoinMode.AUDIO;
-        }
-        if (observer) {
-            joinMode = RoomInfoMessage.JoinMode.OBSERVER;
-        }
-        String userId = room.getLocalUser().getUserId();
-        int remoteUserCount = room.getRemoteUsers() != null ? room.getRemoteUsers().size() : 0;
-        intent.putExtra(CallActivity.EXTRA_IS_MASTER, remoteUserCount == 0);
+        intent.putExtra(CallActivity.EXTRA_IS_MASTER, isRemoteUser);
         intent.putExtra("DATA", data);
-        RoomInfoMessage roomInfoMessage = new RoomInfoMessage(
-                userId, UserUtils.USER_NAME, joinMode, System.currentTimeMillis(), remoteUserCount == 0);
-        JSONObject jsonObject = new JSONObject();
-        try {
-            jsonObject.put("userId", userId);
-            jsonObject.put("userName", UserUtils.USER_NAME);
-            jsonObject.put("joinMode", joinMode);
-            jsonObject.put("joinTime", System.currentTimeMillis());
-            jsonObject.put("master", remoteUserCount == 0 ? 1 : 0);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        room.setRoomAttribute(userId, jsonObject.toString(), roomInfoMessage, new IRCRTCResultCallback() {
-            @Override
-            public void onSuccess() {
-
-            }
-
-            @Override
-            public void onFailed(RTCErrorCode errorCode) {
-
-            }
-        });
         UserUtils.activity.startActivity(intent);
     }
 
-    private void createConnectionRoom(boolean muteVideo, boolean observer) {
-//        Intent intent = null;
-//        使用会议界面进行音视频
-        RCRTCRoom room = RCRTCEngine.getInstance().getRoom();
-        int joinMode = RoomInfoMessage.JoinMode.AUDIO_VIDEO;
-        if (muteVideo) {
-            joinMode = RoomInfoMessage.JoinMode.AUDIO;
-        }
-        if (observer) {
-            joinMode = RoomInfoMessage.JoinMode.OBSERVER;
-        }
-        String userId = room.getLocalUser().getUserId();
-        int remoteUserCount = room.getRemoteUsers() != null ? room.getRemoteUsers().size() : 0;
-//        admin = remoteUserCount == 0;
-        RoomInfoMessage roomInfoMessage = new RoomInfoMessage(
-                userId, UserUtils.USER_NAME, joinMode, System.currentTimeMillis(), remoteUserCount == 0);
-        JSONObject jsonObject = new JSONObject();
-        try {
-            jsonObject.put("userId", userId);
-            jsonObject.put("userName", UserUtils.USER_NAME);
-            jsonObject.put("joinMode", joinMode);
-            jsonObject.put("joinTime", System.currentTimeMillis());
-            jsonObject.put("master", remoteUserCount == 0 ? 1 : 0);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        room.setRoomAttribute(userId, jsonObject.toString(), roomInfoMessage, new IRCRTCResultCallback() {
-            @Override
-            public void onSuccess() {
-
-            }
-
-            @Override
-            public void onFailed(RTCErrorCode errorCode) {
-
-            }
-        });
-
-    }
 
     private void initManager() {
         HeadsetPlugReceiver.setOnHeadsetPlugListener(onHeadsetPlugListener);
-
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction("android.intent.action.HEADSET_PLUG");
         intentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);

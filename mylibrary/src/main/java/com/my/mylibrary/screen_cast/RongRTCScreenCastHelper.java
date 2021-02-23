@@ -62,7 +62,7 @@ public class RongRTCScreenCastHelper {
                     .getMediaProjection(Activity.RESULT_OK, this.mMediaProjectionData);
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(UserUtils.activity, "权限适配有问题" + e.toString(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(UserUtils.activity, "服务适配有问题" + e.toString(), Toast.LENGTH_SHORT).show();
             return;
         }
         this.mVirtualDisplay = createVirtualDisplay(width, height);
