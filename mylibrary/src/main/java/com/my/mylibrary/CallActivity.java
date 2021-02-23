@@ -208,12 +208,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     private Timer networkObserverTimer = null;
     private RCRTCLiveInfo liveInfo;
     List<String> unGrantedPermissions;
-
-    /**
-     * 本地麦克风采集的和远端的pcm音频数据写到文件用于定位问题,写入文件地址为sdcard/webrtc/ 1.使用时 writePcmFileForDebug 设置为true 即可 2.
-     * 此功能主要用于排查问题，强烈建议不能发布到生产环境
-     */
-    private boolean writePcmFileForDebug = false;
     private MirrorImageHelper mMirrorHelper;
     private static Intent dataIntent;
 
@@ -273,9 +267,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
 
             }
         });
-        if (writePcmFileForDebug) {
-            createDebugPcmFile();
-        }
         initAudioMixing();
     }
 
@@ -596,11 +587,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     private IRCRTCAudioDataListener audioDataListener = new IRCRTCAudioDataListener() {
         @Override
         public byte[] onAudioFrame(RCRTCAudioFrame rtcAudioFrame) {
-            if (writePcmFileForDebug) {
-                byte[] bytes = rtcAudioFrame.getBytes().clone();
-                ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-                writePcmBuffer(byteBuffer, localFileChanel);
-            }
             return rtcAudioFrame.getBytes();
         }
     };
@@ -1219,10 +1205,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             mSoundPool.release();
         }
         mSoundPool = null;
-        if (writePcmFileForDebug) {
-            closePcmFile(localFileChanel, localFileStream);
-            closePcmFile(remoteFileChanel, remoteFileStream);
-        }
     }
 
     public void onToggleMic(boolean mute) {
@@ -2092,76 +2074,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         Log.d(TAG, "onMirrorVideoFrame: " + (System.nanoTime() - start) * 1.0 / 1000000);
     }
 
-    /**
-     * bug调试文件        start
-     */
-    private @Nullable
-    FileOutputStream localFileStream;
-    private @Nullable
-    FileChannel localFileChanel;
-    private @Nullable
-    FileOutputStream remoteFileStream;
-    private @Nullable
-    FileChannel remoteFileChanel;
-
-    private void createDebugPcmFile() {
-        try {
-            String roomId = "";
-            roomId = room.getRoomId();
-            String localName =
-                    RongIMClient.getInstance().getCurrentUserId() + "_" + roomId + "_local.pcm";
-            String remoteName =
-                    RongIMClient.getInstance().getCurrentUserId() + "_" + roomId + "_remote.pcm";
-            File parent_path = Environment.getExternalStorageDirectory();
-
-            File dir = new File(parent_path.getAbsoluteFile(), "webrtc");
-            dir.mkdir();
-
-            File file = new File(dir.getAbsoluteFile(), localName);
-            if (file.exists()) {
-                file.delete();
-            }
-            file.createNewFile();
-            localFileStream = new FileOutputStream(file);
-            localFileChanel = localFileStream.getChannel();
-            Log.d(TAG, "create file success " + file.getAbsolutePath());
-            file = new File(dir.getAbsoluteFile(), remoteName);
-            if (file.exists()) {
-                file.delete();
-            }
-            file.createNewFile();
-            remoteFileStream = new FileOutputStream(file);
-            remoteFileChanel = remoteFileStream.getChannel();
-            Log.d(TAG, "create file success " + file.getAbsolutePath());
-        } catch (IOException e) {
-            Log.d(TAG, "create file failed");
-        }
-    }
-
-    private void writePcmBuffer(ByteBuffer buffer, FileChannel channel) {
-        try {
-            if (channel != null) {
-                channel.write(buffer);
-                Log.d(TAG, "write buffer success.");
-            }
-        } catch (IOException e) {
-            Log.d(TAG, "write file failed");
-        }
-    }
-
-    private void closePcmFile(FileChannel channel, FileOutputStream fos) {
-        try {
-            if (channel != null) channel.close();
-            if (fos != null) {
-                fos.flush();
-                fos.close();
-            }
-            channel = null;
-            fos = null;
-        } catch (IOException e) {
-            Log.d(TAG, "close file failed");
-        }
-    }
 
     private int onDrawWater(int width, int height, int textureID) {
         boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
