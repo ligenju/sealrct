@@ -11,7 +11,8 @@
     <color name="colorWhite">#FFFFFF</color>
     <color name="color_normal_text">#262626</color>
     <color name="color_divider_line">#E5E5E5</color>
-
+    <color name="bg">#FFEDEDED</color>
+    <color name="C_108EEF">#108EEF</color>
     <!--For DiscreteSeekBar-->
 
 

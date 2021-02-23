@@ -41,7 +41,6 @@ import androidx.appcompat.widget.AppCompatCheckBox;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-
 import com.my.mylibrary.base.RongRTCBaseActivity;
 import com.my.mylibrary.bean.ItemModel;
 import com.my.mylibrary.bean.UserInfo;
@@ -119,7 +118,6 @@ import io.rong.imlib.model.MessageContent;
 import static com.my.mylibrary.utils.UserUtils.IS_AUTO_TEST;
 import static com.my.mylibrary.utils.UserUtils.IS_BENDI;
 import static com.my.mylibrary.utils.UserUtils.IS_LIVE;
-import static com.my.mylibrary.utils.UserUtils.IS_MIRROR;
 import static com.my.mylibrary.utils.UserUtils.IS_OBSERVER;
 import static com.my.mylibrary.utils.UserUtils.IS_VIDEO_MUTE;
 import static com.my.mylibrary.utils.UserUtils.IS_WATER;
@@ -131,6 +129,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     private static String TAG = "CallActivity";
     private static final int SCREEN_CAPTURE_REQUEST_CODE = 10101;
 
+    public static final String EXTRA_USER_NAME = "blinktalk.io.USER_NAME";
     public static final String EXTRA_IS_MASTER = "EXTRA_IS_MASTER";
 
     // List of mandatory application unGrantedPermissions.
@@ -214,7 +213,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
      * 本地麦克风采集的和远端的pcm音频数据写到文件用于定位问题,写入文件地址为sdcard/webrtc/ 1.使用时 writePcmFileForDebug 设置为true 即可 2.
      * 此功能主要用于排查问题，强烈建议不能发布到生产环境
      */
-    private boolean writePcmFileForDebug = true;
+    private boolean writePcmFileForDebug = false;
     private MirrorImageHelper mMirrorHelper;
     private static Intent dataIntent;
 
@@ -322,6 +321,12 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
 
         renderViewManager = new VideoViewManager();
         renderViewManager.setActivity(this);
+        renderViewManager.setOnToggleListener(new VideoViewManager.OnToggleListener() {
+            @Override
+            public void onToggleTips(boolean isHasConnectedUser) {
+                setWaitingTipsVisiable(isHasConnectedUser);
+            }
+        });
         if (BuildConfig.DEBUG) {
             textViewNetSpeed.setVisibility(View.VISIBLE);
         } else {
@@ -379,7 +384,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                 btnSwitchCamera.setEnabled(false);
             } else {
                 btnSwitchCamera.setEnabled(true);
-//                btnSwitchCamera.setVisibility(View.VISIBLE);
+                btnSwitchCamera.setVisibility(View.VISIBLE);
             }
         }
     }
@@ -391,13 +396,13 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         if (isHidden) {
             buttonHangUp.setVisibility(View.GONE);
             mcall_more_container.setVisibility(View.GONE);
-            titleContainer.setVisibility(View.GONE);
+//            titleContainer.setVisibility(View.GONE);
             btnMuteMic.setVisibility(View.GONE);
         } else {
             btnMuteMic.setVisibility(View.VISIBLE);
             buttonHangUp.setVisibility(View.VISIBLE);
             mcall_more_container.setVisibility(View.VISIBLE);
-            titleContainer.setVisibility(View.VISIBLE);
+//            titleContainer.setVisibility(View.VISIBLE);
         }
     }
 
@@ -1092,9 +1097,9 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     private void intendToLeave(boolean initiative) {
         FinLog.i(TAG, "intendToLeave()-> " + initiative);
         cancelScreenCast(true);
-//        if (null != sharingMap) {
-//            sharingMap.clear();
-//        }
+        if (null != sharingMap) {
+            sharingMap.clear();
+        }
         if (initiative) {
             selectAdmin();
         } else {
@@ -1252,11 +1257,22 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                 LiveDataOperator.getInstance().publish(jsonObject.toString(), new LiveDataOperator.OnResultCallBack() {
                     @Override
                     public void onSuccess(final String result) {
+                        postUIThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                showToast("直播房间上传成功！" + result);
+                            }
+                        });
                     }
 
                     @Override
                     public void onFailed(final String error) {
-
+                        postUIThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                showToast("直播房间上传失败！" + error);
+                            }
+                        });
                     }
                 });
             }
@@ -1952,8 +1968,8 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                 });
             }
         });
-//        renderViewManager.removeVideoView(true, myUserId, screenOutputStream.getTag());
-//        screenOutputStream = null;
+        renderViewManager.removeVideoView(true, myUserId, screenOutputStream.getTag());
+        screenOutputStream = null;
         if (isHangup) {
             disconnect();
         }

@@ -9,7 +9,8 @@ import android.app.Activity;
  */
 public class UserUtils {
     //融云APPKEY
-    public static final String APP_KEY = "3argexb63fgue";
+    //    public static final String APP_KEY = "3argexb63fgue";
+    public static final String APP_KEY = "pwe86ga5ps826";
     //token 连接融云
     public static String TOKEN = "";
     //房间ID=123456  建立房间
@@ -17,7 +18,7 @@ public class UserUtils {
     public static String USER_NAME = "123456";
     public static Activity activity;
     //连接状态 0未连接  1=共享   2=视频检查
-    public static int CONNECTION_STATUS=0;
+    public static int CONNECTION_STATUS = 0;
     //设置音频视频
     public static boolean KEY_USE_AV_SETTING = true;
     //是音频音乐

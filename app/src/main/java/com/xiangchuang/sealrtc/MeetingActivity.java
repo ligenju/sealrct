@@ -1913,7 +1913,7 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
                 }
                 btnCustomAudioStream.setSelected(true);
                 //                toggleActionButtons(true);
-                RongRTC.newInstance().startAudioMixActivity(this);
+//                RongRTC.newInstance().startAudioMixActivity(this);
                 overridePendingTransition(R.anim.mix_slide_up, 0);
                 break;
             default:

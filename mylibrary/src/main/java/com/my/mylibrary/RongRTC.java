@@ -336,6 +336,7 @@ public class RongRTC {
     private void connectToRoom() {
         if (RongIMClient.getInstance().getCurrentConnectionStatus()
                 == RongIMClient.ConnectionStatusListener.ConnectionStatus.CONNECTED) {
+//            LoadDialog.show(UserUtils.activity);
             initOrUpdateRTCEngine();
 
             RCRTCRoomType roomType;
@@ -348,47 +349,13 @@ public class RongRTC {
             RCRTCEngine.getInstance().joinRoom(UserUtils.ROOMID, roomType, new IRCRTCResultDataCallback<RCRTCRoom>() {
                 @Override
                 public void onSuccess(RCRTCRoom room) {
-                    //设置房间属性
-                    RCRTCRoom rooms = RCRTCEngine.getInstance().getRoom();
-                    int joinMode = RoomInfoMessage.JoinMode.AUDIO_VIDEO;
-                    if (UserUtils.IS_VIDEO_MUTE) {
-                        joinMode = RoomInfoMessage.JoinMode.AUDIO;
-                    }
-                    if (UserUtils.IS_OBSERVER) {
-                        joinMode = RoomInfoMessage.JoinMode.OBSERVER;
-                    }
-                    String userId = rooms.getLocalUser().getUserId();
-                    int remoteUserCount = rooms.getRemoteUsers() != null ? rooms.getRemoteUsers().size() : 0;
-                    boolean isAdmin = remoteUserCount == 0;
-                    RoomInfoMessage roomInfoMessage = new RoomInfoMessage(
-                            userId, UserUtils.USER_NAME, joinMode, System.currentTimeMillis(), isAdmin);
-                    JSONObject jsonObject = new JSONObject();
-                    try {
-                        jsonObject.put("userId", userId);
-                        jsonObject.put("userName", UserUtils.USER_NAME);
-                        jsonObject.put("joinMode", joinMode);
-                        jsonObject.put("joinTime", System.currentTimeMillis());
-                        jsonObject.put("master", isAdmin ? 1 : 0);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-                    rooms.setRoomAttribute(userId, jsonObject.toString(), roomInfoMessage, new IRCRTCResultCallback() {
-                        @Override
-                        public void onSuccess() {
-
-                        }
-
-                        @Override
-                        public void onFailed(RTCErrorCode errorCode) {
-
-                        }
-                    });
-                    if (UserUtils.IS_BENDI) {
-                        initManager();
-                    }else {
-                        startCallActivity(isAdmin);
-                    }
-                    onRongYunConnectionMonitoring.onConnectionSucceeded(isAdmin);
+//                    LoadDialog.dismiss(MainActivity.this);
+                    String toastMsg = UserUtils.activity.getResources().getString(R.string.join_room_success);
+                    Toast.makeText(UserUtils.activity, toastMsg, Toast.LENGTH_SHORT).show();
+                    if (!UserUtils.IS_BENDI)
+                        startCallActivity(UserUtils.IS_VIDEO_MUTE, UserUtils.IS_OBSERVER);
+                    else
+                        createConnectionRoom(UserUtils.IS_VIDEO_MUTE, UserUtils.IS_OBSERVER);
 
                     int userCount = room.getRemoteUsers().size();
                     Log.d(TAG, "onSuccess: 房间人数==" + userCount);
@@ -519,10 +486,10 @@ public class RongRTC {
      * @return
      */
     private RCRTCParamsType.RCRTCVideoResolution selectiveResolution(String resolutionStr) {
-        RCRTCParamsType.RCRTCVideoResolution profile = null;
         if (resolutionStr == null || resolutionStr.equals("")) {
             return RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_480_640;
         }
+        RCRTCParamsType.RCRTCVideoResolution profile = null;
         String[] resolutionArray = resolutionStr.split("x");
         profile = RCRTCParamsType.RCRTCVideoResolution.parseVideoResolution(
                 Integer.parseInt(resolutionArray[0]), Integer.parseInt(resolutionArray[1]));
@@ -536,15 +503,90 @@ public class RongRTC {
 
     private boolean HeadsetPlugReceiverState = false; // false：开启音视频之前已经连接上耳机
 
-    private void startCallActivity(boolean isRemoteUser) {
+    private void startCallActivity(boolean muteVideo, boolean observer) {
         Intent intent = null;
 //        使用会议界面进行音视频
         intent = new Intent(UserUtils.activity, CallActivity.class);
-        intent.putExtra(CallActivity.EXTRA_IS_MASTER, isRemoteUser);
+        intent.putExtra(CallActivity.EXTRA_USER_NAME, UserUtils.USER_NAME);
+        RCRTCRoom room = RCRTCEngine.getInstance().getRoom();
+        int joinMode = RoomInfoMessage.JoinMode.AUDIO_VIDEO;
+        if (muteVideo) {
+            joinMode = RoomInfoMessage.JoinMode.AUDIO;
+        }
+        if (observer) {
+            joinMode = RoomInfoMessage.JoinMode.OBSERVER;
+        }
+        String userId = room.getLocalUser().getUserId();
+        int remoteUserCount = room.getRemoteUsers() != null ? room.getRemoteUsers().size() : 0;
+        intent.putExtra(CallActivity.EXTRA_IS_MASTER, remoteUserCount == 0);
         intent.putExtra("DATA", data);
+        RoomInfoMessage roomInfoMessage = new RoomInfoMessage(
+                userId, UserUtils.USER_NAME, joinMode, System.currentTimeMillis(), remoteUserCount == 0);
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("userId", userId);
+            jsonObject.put("userName", UserUtils.USER_NAME);
+            jsonObject.put("joinMode", joinMode);
+            jsonObject.put("joinTime", System.currentTimeMillis());
+            jsonObject.put("master", remoteUserCount == 0 ? 1 : 0);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        room.setRoomAttribute(userId, jsonObject.toString(), roomInfoMessage, new IRCRTCResultCallback() {
+            @Override
+            public void onSuccess() {
+
+            }
+
+            @Override
+            public void onFailed(RTCErrorCode errorCode) {
+
+            }
+        });
         UserUtils.activity.startActivity(intent);
     }
 
+    private void createConnectionRoom(boolean muteVideo, boolean observer) {
+//        Intent intent = null;
+//        使用会议界面进行音视频
+        RCRTCRoom room = RCRTCEngine.getInstance().getRoom();
+        int joinMode = RoomInfoMessage.JoinMode.AUDIO_VIDEO;
+        if (muteVideo) {
+            joinMode = RoomInfoMessage.JoinMode.AUDIO;
+        }
+        if (observer) {
+            joinMode = RoomInfoMessage.JoinMode.OBSERVER;
+        }
+        String userId = room.getLocalUser().getUserId();
+        int remoteUserCount = room.getRemoteUsers() != null ? room.getRemoteUsers().size() : 0;
+//        admin = remoteUserCount == 0;
+        RoomInfoMessage roomInfoMessage = new RoomInfoMessage(
+                userId, UserUtils.USER_NAME, joinMode, System.currentTimeMillis(), remoteUserCount == 0);
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("userId", userId);
+            jsonObject.put("userName", UserUtils.USER_NAME);
+            jsonObject.put("joinMode", joinMode);
+            jsonObject.put("joinTime", System.currentTimeMillis());
+            jsonObject.put("master", remoteUserCount == 0 ? 1 : 0);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        room.setRoomAttribute(userId, jsonObject.toString(), roomInfoMessage, new IRCRTCResultCallback() {
+            @Override
+            public void onSuccess() {
+
+            }
+
+            @Override
+            public void onFailed(RTCErrorCode errorCode) {
+
+            }
+        });
+
+
+        initManager();
+    }
 
     private void initManager() {
         HeadsetPlugReceiver.setOnHeadsetPlugListener(onHeadsetPlugListener);
@@ -578,6 +620,7 @@ public class RongRTC {
 
             }
         });
+        onRongYunConnectionMonitoring.onConnectionSucceeded(true);
     }
 
     private void onGetRoomAttributesHandler(Map<String, String> data) {

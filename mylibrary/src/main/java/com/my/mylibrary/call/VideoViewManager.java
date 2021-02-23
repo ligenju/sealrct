@@ -15,8 +15,8 @@ import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
-
 import com.my.mylibrary.BuildConfig;
+import com.my.mylibrary.CallActivity;
 import com.my.mylibrary.R;
 import com.my.mylibrary.bean.connectedVideoViewEntity;
 import com.my.mylibrary.utils.RongRTCTalkTypeUtil;
@@ -41,9 +41,6 @@ import cn.rongcloud.rtc.base.RTCErrorCode;
 import cn.rongcloud.rtc.core.RendererCommon;
 import cn.rongcloud.rtc.utils.FinLog;
 import io.rong.imlib.RongIMClient;
-
-import static com.my.mylibrary.utils.Utils.SCREEN_SHARING;
-
 
 /**
  * Created by Huichao on 2016/8/26.
@@ -105,31 +102,6 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
         screenWidth = wm.getDefaultDisplay().getWidth();
         screenHeight = wm.getDefaultDisplay().getHeight();
     }
-
-    public void onCreateEglFailed(String userId, String tag) {
-        RenderHolder renderHolder = getViewHolder(userId, tag);
-        Log.i(TAG, "onCreateEglFailed() renderHolder = " + renderHolder);
-        if (renderHolder != null) {
-            renderHolder.coverView.onCreateEglFailed();
-        }
-    }
-
-    private class RemoteRenderClickListener implements View.OnClickListener {
-        private RenderHolder renderHolder;
-
-        public RemoteRenderClickListener(RenderHolder renderHolder) {
-            this.renderHolder = renderHolder;
-        }
-
-        @Override
-        public void onClick(View view) {
-            touchRender(renderHolder);
-//            doubleClick(true);
-        }
-    }
-
-    long lastClickTime = 0;
-    int tapStep = 0;
 
     private void switchDebugInfoViewVisibility() {
         if (!BuildConfig.DEBUG) {
@@ -227,16 +199,16 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
         try {
             Log.i(TAG, "connectedUsers=" + connectedUsers.size() + ",userName=" + userName);
             if (connectedUsers.size() == 0) {
-                RenderHolder renderHolder = createRenderHolder(); // unUsedRemoteRenders.get(0);
+                RenderHolder renderHolder = createRenderHolder();
                 renderHolder.userName = userName;
                 renderHolder.userId = userID;
                 renderHolder.tag = tag;
                 renderHolder.initCover(talkType);
-                addVideoViewEntiry(userID, tag, renderHolder);
-                //                unUsedRemoteRenders.remove(0);
+                    addVideoViewEntiry(userID, tag, renderHolder);
+
             }
             if (connectedUsers.size() != 0 && !containsKeyVideoViewEntiry(userID, tag)) {
-                RenderHolder renderHolder = createRenderHolder(); // unUsedRemoteRenders.get(0);
+                RenderHolder renderHolder = createRenderHolder();
                 renderHolder.userName = userName;
                 renderHolder.userId = userID;
                 renderHolder.tag = tag;
@@ -244,7 +216,7 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
                 renderHolder.coverView.showNameIndexView();
                 holderContainer.addView(renderHolder.containerLayout, remoteLayoutParams);
                 addVideoViewEntiry(userID, tag, renderHolder);
-                //                unUsedRemoteRenders.remove(0);
+
             }
 
             toggleTips();
@@ -341,7 +313,7 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
             renderHolder = getViewHolder(userID, tag);
             renderHolder.userName = userName;
         } else {
-            renderHolder = createRenderHolder(); // unUsedRemoteRenders.get(0);
+            renderHolder = createRenderHolder();
             renderHolder.userName = userName;
             renderHolder.tag = tag;
             renderHolder.userId = userID;
@@ -352,7 +324,7 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
             holderContainer.addView(renderHolder.containerLayout, remoteLayoutParams);
             toggleTips();
 
-            //            unUsedRemoteRenders.remove(0);
+
         }
         renderHolder.userId = userID;
 
@@ -382,8 +354,8 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
             String talkType) {
         RenderHolder renderHolder = null;
         if (isSelf) {
-            renderHolder = createRenderHolder(); // unUsedRemoteRenders.get(0);
-            //            unUsedRemoteRenders.remove(0);
+            renderHolder = createRenderHolder();
+
         } else {
             renderHolder = getViewHolder(userID, tag);
         }
@@ -883,9 +855,6 @@ public class VideoViewManager implements ContainerLayout.ContainerLayoutGestureE
         }
     }
 
-    private boolean userIDEndWithScreenSharing(String userID) {
-        return !TextUtils.isEmpty(userID) && userID.endsWith(SCREEN_SHARING);
-    }
 
     public void setRongRTCRoom(RCRTCRoom rongRTCRoom) {
         this.rongRTCRoom = rongRTCRoom;
