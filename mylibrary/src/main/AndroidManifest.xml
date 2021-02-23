@@ -33,6 +33,10 @@
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:launchMode="singleTop"
             android:resizeableActivity="true" />
+        <service
+            android:name="com.my.mylibrary.screen_cast.ScreenCastService"
+            android:enabled="true"
+            android:foregroundServiceType="mediaProjection" />
     </application>
 
 </manifest>

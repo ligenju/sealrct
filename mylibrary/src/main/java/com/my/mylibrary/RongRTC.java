@@ -3,13 +3,16 @@ package com.my.mylibrary;
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothHeadset;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.media.AudioManager;
 import android.media.MediaRecorder;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
+import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -24,6 +27,7 @@ import com.my.mylibrary.dialog.PromptDialog;
 import com.my.mylibrary.message.RoomInfoMessage;
 import com.my.mylibrary.message.RoomKickOffMessage;
 import com.my.mylibrary.screen_cast.RongRTCScreenCastHelper;
+import com.my.mylibrary.screen_cast.ScreenCastService;
 import com.my.mylibrary.utils.BluetoothUtil;
 import com.my.mylibrary.utils.CustomizedEncryptionUtil;
 import com.my.mylibrary.utils.HeadsetPlugReceiver;
@@ -70,6 +74,8 @@ import cn.rongcloud.rtc.utils.FinLog;
 import io.rong.calllib.RongCallClient;
 import io.rong.imlib.RongIMClient;
 import io.rong.imlib.model.MessageContent;
+
+import static android.content.Context.BIND_AUTO_CREATE;
 
 
 /**
@@ -303,7 +309,9 @@ public class RongRTC {
         if (defaultAudioStream != null) {
             defaultAudioStream.setAudioDataListener(null);
         }
-
+        if (serviceConnection != null) {
+            UserUtils.activity.unbindService(serviceConnection);
+        }
         RCRTCCameraOutputStream defaultVideoStream = RCRTCEngine.getInstance().getDefaultVideoStream();
         if (defaultVideoStream != null) {
             defaultVideoStream.setVideoFrameListener(null);
@@ -725,6 +733,7 @@ public class RongRTC {
         }
     }
 
+    private ServiceConnection serviceConnection;
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void publishResource() {
@@ -749,21 +758,38 @@ public class RongRTC {
                 localUser.publishStreams(localAvStreams, new IRCRTCResultCallback() {
                     @Override
                     public void onSuccess() {
-                        FinLog.v(TAG, "publish success()");
                         RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
                         videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_720_1280);
                         videoConfigBuilder.setVideoFps(RCRTCParamsType.RCRTCVideoFps.Fps_10);
                         screenOutputStream = RCRTCEngine.getInstance()
                                 .createVideoStream(RongRTCScreenCastHelper.VIDEO_TAG, videoConfigBuilder.build());
-                        screenCastHelper = new RongRTCScreenCastHelper();
-                        screenCastHelper.init(UserUtils.activity, screenOutputStream, data, 720, 1280);
                         RCRTCVideoView videoView = new RCRTCVideoView(UserUtils.activity);
                         screenOutputStream.setVideoView(videoView);
-                        screenCastHelper.start();
+                        screenCastHelper = new RongRTCScreenCastHelper();
+                        if (Build.VERSION.SDK_INT > 28) { // 如果 SDK 版本大于28，需要启动一个前台service来录屏
+                            Intent service = new Intent(UserUtils.activity, ScreenCastService.class);
+                            serviceConnection = new ServiceConnection() {
+                                @Override
+                                public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+                                    screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, data, 720, 1280);
+                                    screenCastHelper.start();
+                                }
+
+                                @Override
+                                public void onServiceDisconnected(ComponentName componentName) {
+
+                                }
+                            };
+                            UserUtils.activity.bindService(service, serviceConnection, BIND_AUTO_CREATE);
+                        } else {
+                            screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, data, 720, 1280);
+                            screenCastHelper.start();
+                        }
+
                         localUser.publishStream(screenOutputStream, new IRCRTCResultCallback() {
                             @Override
                             public void onSuccess() {
-                                Log.d(TAG, "onSuccess: 发布共享屏幕成功");
+
                             }
 
                             @Override
