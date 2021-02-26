@@ -11,42 +11,6 @@
         android:layout_centerInParent="true" />
 
     <LinearLayout
-        android:id="@+id/call_layout_title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <TextView
-            android:id="@+id/call_room_number"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/room_number"
-            android:textColor="#ffffff"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/call_time"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/connection_duration"
-            android:textColor="#C89E50"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/call_net_speed"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/network_traffic"
-            android:textColor="#ffffff"
-            android:textSize="12sp" />
-    </LinearLayout>
-
-
-    <LinearLayout
         android:id="@+id/call_waiting_tips"
         android:layout_width="240dp"
         android:layout_height="80dp"

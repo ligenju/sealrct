@@ -37,14 +37,8 @@ public class UserUtils {
     public static boolean IS_AUTO_TEST = false;
     //是否采用双声道
     public static boolean AUDIO_STEREO_ENABLE = false;
-    //开启自定义音频加解密
-    public static boolean AUDIO_ENCRYPTION = false;
-    //开启自定义视频加解密
-    public static boolean VIDEO_ENCRYPTION = false;
     //音频噪声高通滤波器
     public static boolean AUDIO_NOISE_HIGH_PASS_FILTER = true;
-    //启用AUDIO回声过滤器
-    public static boolean AUDIO_ECHO_CANCEL_FILTER_ENABLE = false;
     //音频AGC控制启用
     public static boolean AUDIO_AGC_CONTROL_ENABLE = true;
     //音频AGC限制器启用
@@ -69,14 +63,6 @@ public class UserUtils {
     public static int AUDIO_TRANSPORT_BIT_RATE = 30;
     //设置音频采样率
     public static int AUDIO_SAMPLE_RATE = 48000;
-    //设置麦克采集来源
-    public static int AUDIO_SOURCE = 7;
-    //AUDIO ECHO取消模式
-    public static int AUDIO_ECHO_CANCEL_MODE = 0;
-    //音频噪音抑制模式
-    public static int AUDIO_NOISE_SUPPRESSION_MODE = 0;
-    //音频噪音抑制等级
-    public static int AUDIO_NOISE_SUPPRESSION_LEVEL = 1;
     //设置AGC Targetdbov
     public static int AUDIO_AGC_TARGET_DBOV = -3;
     //设置AGC压缩

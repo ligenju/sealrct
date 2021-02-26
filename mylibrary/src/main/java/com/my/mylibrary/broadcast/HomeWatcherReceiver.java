@@ -69,7 +69,7 @@ public class HomeWatcherReceiver extends BroadcastReceiver {
 
     public static void unregisterHomeKeyReceiver(Context context) {
         Log.i(LOG_TAG, "unregisterHomeKeyReceiver");
-        if (null != mHomeKeyReceiver) {
+        if (mHomeKeyReceiver != null) {
             context.unregisterReceiver(mHomeKeyReceiver);
         }
     }

@@ -86,28 +86,18 @@ public class RongRTC {
     //房间
     private RCRTCRoom room;
     private RCRTCLocalUser localUser;
-    //是否已连接
-    private boolean isConnected = true;
-    //共享屏幕判断只能一个人共享  true=无人；false=有人
-    private boolean screenCastEnable = true;
     private boolean kicked = false;
     //屏幕投射助手
     private RongRTCScreenCastHelper screenCastHelper;
     //共享屏幕的流
     private RCRTCVideoOutputStream screenOutputStream;
-    //是否是你的房间
-    private boolean isInRoom;
     private OnRongYunConnectionMonitoring onRongYunConnectionMonitoring;
     private List<ItemModel> mMembers = new ArrayList<>();
+    private List<Activity> activityList = new ArrayList<>();
     private Map<String, UserInfo> mMembersMap = new HashMap<>();
     //我的userID；
     private String myUserId;
     private String adminUserId;
-//    private boolean admin;
-    /**
-     * true 关闭麦克风,false 打开麦克风
-     */
-    private boolean muteMicrophone = false;
     /**
      * true 关闭扬声器； false 打开扬声器
      */
@@ -116,15 +106,16 @@ public class RongRTC {
     private AppRTCAudioManager audioManager = null;
     //监听耳机
     private HeadsetPlugReceiver headsetPlugReceiver = null;
-    public static Intent data;
+    public Intent data;
     //重新连接时加入会议室
     private boolean joinRoomWhenReconnected = false;
-    public static int MEDIA_PROJECTION_SERVICE_CODE = 101;
+    public int MEDIA_PROJECTION_SERVICE_CODE = 101;
 
     public static String TAG = "RongRTC>>>>>>";
     private static RongRTC rongRTC;
     private ServiceConnection serviceConnection;
-    private boolean HeadsetPlugReceiverState = false; // false：开启音视频之前已经连接上耳机
+    // false：开启音视频之前已经连接上耳机
+    private boolean HeadsetPlugReceiverState = false;
 
 
     private RongRTC() {
@@ -221,6 +212,10 @@ public class RongRTC {
         return false;
     }
 
+    public void addActivity(Activity activity) {
+        activityList.add(activity);
+    }
+
     /**
      * 开始连接融云
      *
@@ -234,6 +229,8 @@ public class RongRTC {
         if (datas != null) {
             data = datas;
             UserUtils.IS_BENDI = true;
+        } else {
+            UserUtils.IS_BENDI = false;
         }
         UserUtils.activity = activity;
         UserUtils.ROOMID = roomId;
@@ -341,6 +338,11 @@ public class RongRTC {
         if (defaultVideoStream != null) {
             defaultVideoStream.setVideoFrameListener(null);
         }
+        if (activityList != null && activityList.size() > 0) {
+            for (int i = 0; i < activityList.size(); i++) {
+                activityList.get(i).finish();
+            }
+        }
         onRongYunConnectionMonitoring.onDestroyed();
     }
 
@@ -370,7 +372,6 @@ public class RongRTC {
      * 离开房间
      */
     private void disconnect() {
-        isConnected = false;
         if (room != null) {
             room.deleteRoomAttributes(Collections.singletonList(myUserId), null, null);
         }
@@ -385,7 +386,6 @@ public class RongRTC {
                     @Override
                     public void run() {
                         FinLog.i(TAG, "quitRoom()->onUiSuccess");
-                        isInRoom = false;
                         if (!kicked) {
                             onRongYunConnectionMonitoring.onSuccessfullyExitTheRoom();
                         }
@@ -745,7 +745,7 @@ public class RongRTC {
             localUser = room.getLocalUser();
 
             RCRTCEngine.getInstance().getDefaultAudioStream().setAudioDataListener(audioDataListener);
-            RCRTCEngine.getInstance().getDefaultAudioStream().setMicrophoneDisable(muteMicrophone);
+            RCRTCEngine.getInstance().getDefaultAudioStream().setMicrophoneDisable(false);
             publishResource();
             subscribeAll();
 
@@ -760,7 +760,6 @@ public class RongRTC {
                     onHeadsetPlugListener.onNotifyHeadsetState(true, type);
                 }
             }
-            isInRoom = true;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1022,14 +1021,6 @@ public class RongRTC {
         @Override
         public void onVideoTrackAdd(final String userId, final String tag) {
             Log.i(TAG, "onVideoTrackAdd() userId: " + userId + " ,tag = " + tag);
-            UserUtils.activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (TextUtils.equals(tag, RongRTCScreenCastHelper.VIDEO_TAG)) {
-                        screenCastEnable = false;
-                    }
-                }
-            });
         }
 
         @Override
@@ -1110,21 +1101,6 @@ public class RongRTC {
         @Override
         public void onRemoteUserUnpublishResource(final RCRTCRemoteUser remoteUser, final List<RCRTCInputStream> streams) {
             FinLog.d(TAG, "onRemoteUserUnpublishResource remoteUser: " + remoteUser);
-            if (streams == null) {
-                return;
-            }
-            UserUtils.activity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    for (RCRTCInputStream stream : streams) {
-                        if (stream.getMediaType().equals(RCRTCMediaType.VIDEO)) {
-                            if (TextUtils.equals(stream.getTag(), RongRTCScreenCastHelper.VIDEO_TAG)) {
-                                screenCastEnable = true;
-                            }
-                        }
-                    }
-                }
-            });
         }
 
         @Override

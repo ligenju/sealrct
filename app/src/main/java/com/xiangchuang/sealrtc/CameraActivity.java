@@ -19,6 +19,7 @@ public class CameraActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera);
+        RongRTC.newInstance().addActivity(this);
         initView();
     }
 
@@ -35,7 +36,6 @@ public class CameraActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 RongRTC.newInstance().intendToLeave(true);
-                finish();
             }
         });
     }
