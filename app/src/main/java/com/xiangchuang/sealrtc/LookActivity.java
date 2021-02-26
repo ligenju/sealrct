@@ -1,13 +1,22 @@
-package com.my.mylibrary;
+package com.xiangchuang.sealrtc;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatCheckBox;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothHeadset;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
@@ -16,8 +25,8 @@ import android.media.SoundPool;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.text.TextUtils;
 import android.util.Log;
@@ -34,13 +43,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.widget.AppCompatCheckBox;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
+import com.my.mylibrary.AudioEffectFragment;
+import com.my.mylibrary.AudioMixFragment;
 import com.my.mylibrary.base.RongRTCBaseActivity;
 import com.my.mylibrary.bean.ItemModel;
 import com.my.mylibrary.bean.UserInfo;
@@ -51,6 +55,7 @@ import com.my.mylibrary.dialog.PromptDialog;
 import com.my.mylibrary.message.RoomInfoMessage;
 import com.my.mylibrary.message.RoomKickOffMessage;
 import com.my.mylibrary.screen_cast.RongRTCScreenCastHelper;
+import com.my.mylibrary.screen_cast.ScreenCastService;
 import com.my.mylibrary.utils.BluetoothUtil;
 import com.my.mylibrary.utils.HeadsetPlugReceiver;
 import com.my.mylibrary.utils.MirrorImageHelper;
@@ -58,18 +63,12 @@ import com.my.mylibrary.utils.OnHeadsetPlugListener;
 import com.my.mylibrary.utils.RongRTCPopupWindow;
 import com.my.mylibrary.utils.RongRTCTalkTypeUtil;
 import com.my.mylibrary.utils.UserUtils;
-import com.my.mylibrary.utils.Utils;
 import com.my.mylibrary.watersign.TextureHelper;
 import com.my.mylibrary.watersign.WaterMarkFilter;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -109,26 +108,16 @@ import cn.rongcloud.rtc.base.RCRTCResourceState;
 import cn.rongcloud.rtc.base.RCRTCStream;
 import cn.rongcloud.rtc.base.RCRTCVideoFrame;
 import cn.rongcloud.rtc.base.RTCErrorCode;
-import cn.rongcloud.rtc.core.CameraVideoCapturer;
 import cn.rongcloud.rtc.utils.FinLog;
 import io.rong.imlib.RongIMClient;
 import io.rong.imlib.model.MessageContent;
 
-import static com.my.mylibrary.utils.UserUtils.IS_AUTO_TEST;
-import static com.my.mylibrary.utils.UserUtils.IS_BENDI;
-import static com.my.mylibrary.utils.UserUtils.IS_LIVE;
-import static com.my.mylibrary.utils.UserUtils.IS_OBSERVER;
-import static com.my.mylibrary.utils.UserUtils.IS_VIDEO_MUTE;
-import static com.my.mylibrary.utils.UserUtils.IS_WATER;
-import static com.my.mylibrary.utils.UserUtils.ROOMID;
-import static com.my.mylibrary.utils.Utils.parseTimeSeconds;
 import static io.rong.imlib.RongIMClient.ConnectionStatusListener.ConnectionStatus.NETWORK_UNAVAILABLE;
 
-public class CallActivity extends RongRTCBaseActivity implements View.OnClickListener, OnHeadsetPlugListener {
-    private static String TAG = "CallActivity";
+public class LookActivity extends RongRTCBaseActivity implements View.OnClickListener, OnHeadsetPlugListener {
+    private static String TAG = "LookActivity";
     private static final int SCREEN_CAPTURE_REQUEST_CODE = 10101;
 
-    public static final String EXTRA_USER_NAME = "blinktalk.io.USER_NAME";
     public static final String EXTRA_IS_MASTER = "EXTRA_IS_MASTER";
 
     // List of mandatory application unGrantedPermissions.
@@ -148,33 +137,22 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     private static RongRTCScreenCastHelper screenCastHelper;
 
     private AppRTCAudioManager audioManager = null;
-    Handler networkSpeedHandler;
     // Controls
     private VideoViewManager renderViewManager;
     private boolean isConnected = true;
-
-    private TextView textViewRoomNumber;
-    private TextView textViewTime;
-    private TextView textViewNetSpeed;
     private Button buttonHangUp;
     private LinearLayout waitingTips;
     private LinearLayout layoutNetworkStatusInfo;
     private TextView txtViewNetworkStatusInfo;
-    private LinearLayout titleContainer;
     private RelativeLayout mcall_more_container;
     private Handler handler = new Handler();
     private RongRTCPopupWindow popupWindow;
-    private LinearLayout call_reder_container;
-    private AppCompatCheckBox btnSwitchCamera;
-    private AppCompatCheckBox btnMuteSpeaker;
     private AppCompatCheckBox btnMuteMic;
+    private ScrollView scrollView;
+    private HorizontalScrollView horizontalScrollView;
+    private RelativeLayout rel_sv; // sv父布局
     private List<ItemModel> mMembers = new ArrayList<>();
     private Map<String, UserInfo> mMembersMap = new HashMap<>();
-
-    /**
-     * 存储用户是否开启分享
-     */
-    private HashMap<String, Boolean> sharingMap = new HashMap<>();
 
     /**
      * true 关闭麦克风,false 打开麦克风
@@ -185,10 +163,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
      * true 关闭扬声器； false 打开扬声器
      */
     private boolean muteSpeaker = false;
-
-    private ScrollView scrollView;
-    private HorizontalScrollView horizontalScrollView;
-    private RelativeLayout rel_sv; // sv父布局
     private String myUserId;
     // 管理员uerId,默认第一个加入房间的用户为管理员
     private String adminUserId;
@@ -208,8 +182,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     private RCRTCLiveInfo liveInfo;
     List<String> unGrantedPermissions;
     private MirrorImageHelper mMirrorHelper;
-    private static Intent dataIntent;
-
+    private LinearLayout call_reder_container;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -232,13 +205,12 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                 | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
                 | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-        setContentView(R.layout.activity_call);
+        setContentView(R.layout.activity_look);
 
         // Get Intent parameters.
         final Intent intent = getIntent();
         myUserId = RongIMClient.getInstance().getCurrentUserId();
         boolean admin = intent.getBooleanExtra(EXTRA_IS_MASTER, false);
-        dataIntent = intent.getParcelableExtra("DATA");
         if (admin) {
             adminUserId = myUserId;
         }
@@ -269,21 +241,31 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         initAudioMixing();
     }
 
+    //初始化音频混合
+    private void initAudioMixing() {
+        AudioMixFragment.mixing = false;
+        AudioMixFragment.mixMode = AudioMixFragment.MODE_PLAY_MIX;
+        AudioMixFragment.audioPath = AudioMixFragment.DEFAULT_AUDIO_PATH;
+        Arrays.fill(AudioEffectFragment.preloaded, false);
+        AudioEffectFragment.loopCount = 1;
+        RCRTCAudioMixer.getInstance().setMixingVolume(100);
+        RCRTCAudioMixer.getInstance().setPlaybackVolume(100);
+        RCRTCEngine.getInstance().getDefaultAudioStream().adjustRecordingVolume(100);
+    }
+
     private void initAudioManager() {
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         // Create and audio manager that will take care of audio routing,
         // audio modes, audio device enumeration etc.
-        audioManager =
-                AppRTCAudioManager.create(
-                        this.getApplicationContext(),
-                        new Runnable() {
-                            // This method will be called each time the audio state (number and
-                            // type of devices) has been changed.
-                            @Override
-                            public void run() {
-                                onAudioManagerChangedState();
-                            }
-                        });
+        audioManager = AppRTCAudioManager.create(
+                this.getApplicationContext(),
+                new Runnable() {
+                    // This method will be called each time the audio state (number and
+                    // type of devices) has been changed.
+                    @Override
+                    public void run() {
+                    }
+                });
         // Store existing audio settings and change audio mode to
         // MODE_IN_COMMUNICATION for best possible VoIP performance.
         Log.d(TAG, "Initializing the audio manager...");
@@ -291,22 +273,16 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     }
 
     private void initViews() {
-        mcall_more_container = (RelativeLayout) findViewById(R.id.call_more_container);
-        btnSwitchCamera = (AppCompatCheckBox) findViewById(R.id.menu_switch);
-        btnMuteSpeaker = (AppCompatCheckBox) findViewById(R.id.menu_mute_speaker);
-        titleContainer = (LinearLayout) findViewById(R.id.call_layout_title);
         call_reder_container = (LinearLayout) findViewById(R.id.call_reder_container);
-        textViewRoomNumber = (TextView) findViewById(R.id.call_room_number);
-        textViewTime = (TextView) findViewById(R.id.call_time);
-        textViewNetSpeed = (TextView) findViewById(R.id.call_net_speed);
-        buttonHangUp = (Button) findViewById(R.id.call_btn_hangup);
         scrollView = (ScrollView) findViewById(R.id.scrollView);
         horizontalScrollView = (HorizontalScrollView) findViewById(R.id.horizontalScrollView);
+        rel_sv = (RelativeLayout) findViewById(R.id.rel_sv);
+        mcall_more_container = (RelativeLayout) findViewById(R.id.call_more_container);
+        buttonHangUp = (Button) findViewById(R.id.call_btn_hangup);
         btnMuteMic = (AppCompatCheckBox) findViewById(R.id.menu_mute_mic);
         waitingTips = (LinearLayout) findViewById(R.id.call_waiting_tips);
         layoutNetworkStatusInfo = (LinearLayout) findViewById(R.id.layout_network_status_tips);
         txtViewNetworkStatusInfo = (TextView) findViewById(R.id.textView_network_status_tips);
-        rel_sv = (RelativeLayout) findViewById(R.id.rel_sv);
         toggleCameraMicViewStatus();
 
         renderViewManager = new VideoViewManager();
@@ -317,18 +293,8 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                 setWaitingTipsVisiable(isHasConnectedUser);
             }
         });
-        if (BuildConfig.DEBUG) {
-            textViewNetSpeed.setVisibility(View.VISIBLE);
-        } else {
-            textViewNetSpeed.setVisibility(View.GONE);
-        }
-
-        textViewRoomNumber.setText(
-                getText(R.string.room_number) + ROOMID);
         buttonHangUp.setOnClickListener(this);
-        btnSwitchCamera.setOnClickListener(this);
         btnMuteMic.setOnClickListener(this);
-        btnMuteSpeaker.setOnClickListener(this);
         renderViewManager.setOnLocalVideoViewClickedListener(
                 new VideoViewManager.OnLocalVideoViewClickedListener() {
                     @Override
@@ -337,9 +303,102 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                     }
                 });
 
-        if (IS_OBSERVER) {
+        if (UserUtils.IS_OBSERVER) {
             btnMuteMic.setChecked(true);
             btnMuteMic.setEnabled(false);
+        }
+    }
+
+    /**
+     * 第一次加入房间初始化远端的容器位置
+     */
+    private void initRemoteScrollView() {
+        if (screenCofig(null)) {
+            horizontalScreenViewInit();
+        } else {
+            verticalScreenViewInit();
+        }
+    }
+
+    /**
+     * 横竖屏检测
+     *
+     * @param config return true:横屏
+     */
+    private boolean screenCofig(Configuration config) {
+        boolean screen = false; // 默认竖屏
+        try {
+            Configuration configuration = null;
+            if (config == null) {
+                configuration = this.getResources().getConfiguration();
+            } else {
+                configuration = config;
+            }
+            int ori = configuration.orientation;
+            if (ori == configuration.ORIENTATION_LANDSCAPE) {
+                screen = true;
+            } else if (ori == configuration.ORIENTATION_PORTRAIT) {
+                screen = false;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return screen;
+    }
+
+    /**
+     * 横屏View改变
+     */
+    private void horizontalScreenViewInit() {
+        try {
+            RelativeLayout.LayoutParams lp3 = (RelativeLayout.LayoutParams) rel_sv.getLayoutParams();
+            lp3.addRule(RelativeLayout.BELOW, 0);
+
+            WindowManager wm = (WindowManager) this.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
+            int screenWidth = wm.getDefaultDisplay().getWidth();
+            int screenHeight = wm.getDefaultDisplay().getHeight();
+            int width = (screenHeight < screenWidth ? screenHeight : screenWidth) / 3;
+            ViewGroup.MarginLayoutParams mutelayoutParams = (ViewGroup.MarginLayoutParams) btnMuteMic.getLayoutParams();
+            mutelayoutParams.setMargins(0, 0, width, dip2px(LookActivity.this, 16));
+            btnMuteMic.setLayoutParams(mutelayoutParams);
+            if (null != horizontalScrollView) {
+                if (horizontalScrollView.getChildCount() > 0) {
+                    horizontalScrollView.removeAllViews();
+                }
+                horizontalScrollView.setVisibility(View.GONE);
+            }
+            if (null != scrollView) {
+                if (scrollView.getChildCount() > 0) {
+                    scrollView.removeAllViews();
+                }
+                scrollView.setVisibility(View.VISIBLE);
+                call_reder_container.setOrientation(LinearLayout.VERTICAL);
+                scrollView.addView(call_reder_container);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 竖屏View改变
+     */
+    private void verticalScreenViewInit() {
+        initBottomBtn();
+
+        if (null != scrollView) {
+            if (scrollView.getChildCount() > 0) {
+                scrollView.removeAllViews();
+            }
+            scrollView.setVisibility(View.GONE);
+        }
+        if (null != horizontalScrollView) {
+            if (horizontalScrollView.getChildCount() > 0) {
+                horizontalScrollView.removeAllViews();
+            }
+            horizontalScrollView.addView(call_reder_container);
+            horizontalScrollView.setVisibility(View.VISIBLE);
+            call_reder_container.setOrientation(LinearLayout.HORIZONTAL);
         }
     }
 
@@ -356,182 +415,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         } else { // 部分权限未获得，重新请求获取权限
             String[] array = new String[unGrantedPermissions.size()];
             ActivityCompat.requestPermissions(this, unGrantedPermissions.toArray(array), 0);
-        }
-    }
-
-    private void onAudioManagerChangedState() {
-        // TODO(henrika): disable video if AppRTCAudioManager.AudioDevice.EARPIECE
-        // is active.
-    }
-
-    private void toggleCameraMicViewStatus() {
-        Log.i(TAG, "toggleCameraMicViewStatus() IS_OBSERVER = " + IS_OBSERVER + " IS_VIDEO_MUTE = " + IS_VIDEO_MUTE);
-        if (IS_OBSERVER) {
-            btnSwitchCamera.setVisibility(View.GONE);
-            btnMuteMic.setVisibility(View.GONE);
-        } else {
-            if (IS_VIDEO_MUTE) {
-                btnSwitchCamera.setEnabled(false);
-            } else {
-                btnSwitchCamera.setEnabled(true);
-                btnSwitchCamera.setVisibility(View.VISIBLE);
-            }
-        }
-    }
-
-    /**
-     * 改变屏幕上除了视频通话之外的其他视图可见状态
-     */
-    private void toggleActionButtons(boolean isHidden) {
-        if (isHidden) {
-            buttonHangUp.setVisibility(View.GONE);
-            mcall_more_container.setVisibility(View.GONE);
-//            titleContainer.setVisibility(View.GONE);
-            btnMuteMic.setVisibility(View.GONE);
-        } else {
-            btnMuteMic.setVisibility(View.VISIBLE);
-            buttonHangUp.setVisibility(View.VISIBLE);
-            mcall_more_container.setVisibility(View.VISIBLE);
-//            titleContainer.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private void startCall() {
-        try {
-            renderViewManager.initViews(this, IS_OBSERVER);
-            room = RCRTCEngine.getInstance().getRoom();
-            RCRTCEngine.getInstance().registerStatusReportListener(statusReportListener);
-            room.registerRoomListener(roomEventsListener);
-            localUser = room.getLocalUser();
-            renderViewManager.setRongRTCRoom(room);
-
-            RCRTCEngine.getInstance().getDefaultVideoStream().setVideoFrameListener(videoOutputFrameListener);
-            RCRTCEngine.getInstance().getDefaultAudioStream().setAudioDataListener(audioDataListener);
-            RCRTCEngine.getInstance().getDefaultAudioStream().setMicrophoneDisable(muteMicrophone);
-            publishResource(); // 发布资源
-            addAllVideoView();
-            subscribeAll();
-
-            if (!HeadsetPlugReceiverState) {
-                int type = -1;
-                if (BluetoothUtil.hasBluetoothA2dpConnected()) {
-                    type = 0;
-                } else if (BluetoothUtil.isWiredHeadsetOn(CallActivity.this)) {
-                    type = 1;
-                }
-                if (type != -1) {
-                    onNotifyHeadsetState(true, type);
-                }
-            }
-            isInRoom = true;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    private void publishResource() {
-        if (IS_OBSERVER) {
-            return;
-        }
-        if (localUser == null) {
-            Toast.makeText(CallActivity.this, "不在房间里", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        if (RongIMClient.getInstance().getCurrentConnectionStatus() == NETWORK_UNAVAILABLE) {
-            String toastMsg = getResources().getString(R.string.Thecurrentnetworkisnotavailable);
-            Toast.makeText(CallActivity.this, toastMsg, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        final List<RCRTCOutputStream> localAvStreams = new ArrayList<>();
-        localAvStreams.add(RCRTCEngine.getInstance().getDefaultAudioStream());
-        if (!IS_LIVE) {
-            if (IS_BENDI) {
-                localUser.publishStreams(localAvStreams, new IRCRTCResultCallback() {
-                    @Override
-                    public void onSuccess() {
-                        FinLog.v(TAG, "publish success()");
-                        RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
-                        videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_720_1280);
-                        videoConfigBuilder.setVideoFps(RCRTCParamsType.RCRTCVideoFps.Fps_10);
-                        screenOutputStream = RCRTCEngine.getInstance()
-                                .createVideoStream(RongRTCScreenCastHelper.VIDEO_TAG, videoConfigBuilder.build());
-                        screenCastHelper = new RongRTCScreenCastHelper();
-                        screenCastHelper.init(CallActivity.this, screenOutputStream, dataIntent, 720, 1280);
-                        RCRTCVideoView videoView = new RCRTCVideoView(CallActivity.this);
-                        screenOutputStream.setVideoView(videoView);
-                        screenCastHelper.start();
-                        localUser.publishStream(screenOutputStream, new IRCRTCResultCallback() {
-                            @Override
-                            public void onSuccess() {
-
-                            }
-
-                            @Override
-                            public void onFailed(RTCErrorCode errorCode) {
-                                postUIThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        String toastInfo = getResources().getString(R.string.publish_failed);
-                                        Toast.makeText(CallActivity.this, toastInfo, Toast.LENGTH_SHORT).show();
-                                    }
-                                });
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onFailed(RTCErrorCode errorCode) {
-                        FinLog.e(TAG, "publish publish Failed()");
-                        // 50010 网络请求超时错误时，重试一次资源发布操作
-                        if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
-                            publishResource();
-                        }
-                    }
-                });
-            } else {
-                localUser.publishStreams(localAvStreams, new IRCRTCResultCallback() {
-                    @Override
-                    public void onSuccess() {
-
-                    }
-
-                    @Override
-                    public void onFailed(RTCErrorCode errorCode) {
-                        FinLog.e(TAG, "publish publish Failed()");
-                        // 50010 网络请求超时错误时，重试一次资源发布操作
-                        if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
-                            localUser.publishStreams(localAvStreams, null);
-                        }
-                    }
-                });
-            }
-            return;
-        }
-        if (IS_VIDEO_MUTE) {
-            localUser.publishLiveStream(RCRTCEngine.getInstance().getDefaultAudioStream(), createLiveCallback());
-        } else {
-            localUser.publishDefaultLiveStreams(createLiveCallback());
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        unGrantedPermissions.clear();
-        for (int i = 0; i < permissions.length; i++) {
-            if (grantResults[i] == PackageManager.PERMISSION_DENIED)
-                unGrantedPermissions.add(permissions[i]);
-        }
-        for (String permission : unGrantedPermissions) {
-            if (!ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
-                showToastLengthLong(getString(R.string.PermissionStr) + permission + getString(R.string.plsopenit));
-                finish();
-            } else ActivityCompat.requestPermissions(this, new String[]{permission}, 0);
-        }
-        if (unGrantedPermissions.size() == 0) {
-            startCall();
         }
     }
 
@@ -582,6 +465,132 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         }
     }
 
+    private void toggleCameraMicViewStatus() {
+        Log.i(TAG, "toggleCameraMicViewStatus() IS_OBSERVER = " + UserUtils.IS_OBSERVER + " IS_VIDEO_MUTE = " + UserUtils.IS_VIDEO_MUTE);
+        if (UserUtils.IS_OBSERVER) {
+            btnMuteMic.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * 改变屏幕上除了视频通话之外的其他视图可见状态
+     */
+    private void toggleActionButtons(boolean isHidden) {
+        if (isHidden) {
+            buttonHangUp.setVisibility(View.GONE);
+            mcall_more_container.setVisibility(View.GONE);
+            btnMuteMic.setVisibility(View.GONE);
+        } else {
+            btnMuteMic.setVisibility(View.VISIBLE);
+            buttonHangUp.setVisibility(View.VISIBLE);
+            mcall_more_container.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void startCall() {
+        try {
+            renderViewManager.initViews(this, UserUtils.IS_OBSERVER);
+            room = RCRTCEngine.getInstance().getRoom();
+            RCRTCEngine.getInstance().registerStatusReportListener(statusReportListener);
+            room.registerRoomListener(roomEventsListener);
+            localUser = room.getLocalUser();
+            renderViewManager.setRongRTCRoom(room);
+
+            RCRTCEngine.getInstance().getDefaultVideoStream().setVideoFrameListener(videoOutputFrameListener);
+            RCRTCEngine.getInstance().getDefaultAudioStream().setAudioDataListener(audioDataListener);
+            RCRTCEngine.getInstance().getDefaultAudioStream().setMicrophoneDisable(muteMicrophone);
+            publishResource(); // 发布资源
+            addAllVideoView();
+            subscribeAll();
+
+            if (!HeadsetPlugReceiverState) {
+                int type = -1;
+                if (BluetoothUtil.hasBluetoothA2dpConnected()) {
+                    type = 0;
+                } else if (BluetoothUtil.isWiredHeadsetOn(LookActivity.this)) {
+                    type = 1;
+                }
+                if (type != -1) {
+                    onNotifyHeadsetState(true, type);
+                }
+            }
+            isInRoom = true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private ServiceConnection serviceConnection;
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private void publishResource() {
+        if (UserUtils.IS_OBSERVER) {
+            return;
+        }
+        if (localUser == null) {
+            showToastLengthLong("不在房间里");
+            return;
+        }
+
+        if (RongIMClient.getInstance().getCurrentConnectionStatus() == NETWORK_UNAVAILABLE) {
+            showToastLengthLong(getResources().getString(R.string.Thecurrentnetworkisnotavailable));
+            return;
+        }
+
+        final List<RCRTCOutputStream> localAvStreams = new ArrayList<>();
+        localAvStreams.add(RCRTCEngine.getInstance().getDefaultAudioStream());
+            localUser.publishStreams(localAvStreams, new IRCRTCResultCallback() {
+                @Override
+                public void onSuccess() {
+                }
+
+                @Override
+                public void onFailed(RTCErrorCode errorCode) {
+                    FinLog.e(TAG, "publish publish Failed()");
+                    // 50010 网络请求超时错误时，重试一次资源发布操作
+                    if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
+                        publishResource();
+                    }
+                }
+            });
+
+    }
+
+    private void addAllVideoView() {
+        for (RCRTCRemoteUser remoteUser : room.getRemoteUsers()) {
+            addNewRemoteView(remoteUser); // 准备view
+        }
+    }
+
+    private void subscribeAll() {
+        for (final RCRTCRemoteUser remoteUser : room.getRemoteUsers()) {
+            if (remoteUser.getStreams().size() == 0) {
+                continue;
+            }
+            localUser.subscribeStreams(remoteUser.getStreams(), new IRCRTCResultCallback() {
+                @Override
+                public void onSuccess() {
+                    postUIThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateResourceVideoView(remoteUser);
+                        }
+                    });
+                }
+
+                @Override
+                public void onFailed(RTCErrorCode errorCode) {
+                    FinLog.d(TAG, "subscribeAll subscribeStreams userId = " + remoteUser.getUserId() + ", errorCode =" + errorCode.getValue());
+                    // 50010 网络请求超时错误时，重试一次订阅操作
+                    if (RTCErrorCode.RongRTCCodeHttpTimeoutError.equals(errorCode) && remoteUser.getStreams() != null &&
+                            remoteUser.getStreams().size() > 0) {
+                        localUser.subscribeStreams(remoteUser.getStreams(), null);
+                    }
+                }
+            });
+        }
+    }
+
     private IRCRTCAudioDataListener audioDataListener = new IRCRTCAudioDataListener() {
         @Override
         public byte[] onAudioFrame(RCRTCAudioFrame rtcAudioFrame) {
@@ -594,7 +603,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         public RCRTCVideoFrame processVideoFrame(RCRTCVideoFrame videoFrame) {
             boolean isTexture = videoFrame.getCaptureType() == RCRTCVideoFrame.CaptureType.TEXTURE;
             // TODO 水印目前仅支持 Texture 类型
-            if (IS_WATER && isTexture) {
+            if (UserUtils.IS_WATER && isTexture) {
                 videoFrame.setTextureId(
                         onDrawWater(videoFrame.getWidth(), videoFrame.getHeight(), videoFrame.getTextureId()));
             }
@@ -686,7 +695,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    final PromptDialog dialog = PromptDialog.newInstance(CallActivity.this, getString(R.string.rtc_dialog_kicked_by_server));
+                    final PromptDialog dialog = PromptDialog.newInstance(LookActivity.this, getString(R.string.rtc_dialog_kicked_by_server));
                     dialog.setPromptButtonClickedListener(new PromptDialog.OnPromptButtonClickedListener() {
                         @Override
                         public void onPositiveButtonClicked() {
@@ -711,7 +720,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (IS_AUTO_TEST) { // 自动化测试会有红点
+                    if (UserUtils.IS_AUTO_TEST) { // 自动化测试会有红点
                         renderViewManager.onTrackadd(userId, tag);
                     }
                     if (TextUtils.equals(tag, UserUtils.CUSTOM_FILE_TAG)) {
@@ -739,7 +748,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                         itemModel.joinTime = roomInfoMessage.getTimeStamp();
                         if (!mMembersMap.containsKey(itemModel.userId)) {
                             String toastMsg = itemModel.name + " " + getResources().getString(R.string.rtc_join_room);
-                            Toast.makeText(CallActivity.this, toastMsg, Toast.LENGTH_SHORT).show();
+                            showToastLengthLong(toastMsg);
                             mMembers.add(0, itemModel);
                             sortRoomMembers();
                         } else {
@@ -753,10 +762,10 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                                 adminUserId = itemModel.userId;
                                 if (itemModel.userId.equals(myUserId)) {
                                     String toastMsg = getResources().getString(R.string.member_operate_admin_me);
-                                    Toast.makeText(CallActivity.this, toastMsg, Toast.LENGTH_SHORT).show();
+                                    showToastLengthLong(toastMsg);
                                 } else {
                                     String toastMsg = itemModel.name + " " + getResources().getString(R.string.member_operate_admin_new);
-                                    Toast.makeText(CallActivity.this, toastMsg, Toast.LENGTH_SHORT).show();
+                                    showToastLengthLong(toastMsg);
                                 }
                             }
                         }
@@ -805,7 +814,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (IS_AUTO_TEST) {
+                    if (UserUtils.IS_AUTO_TEST) {
                         renderViewManager.onFirstFrameDraw(userId, tag);
                     }
                 }
@@ -857,17 +866,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         @Override
         public void onUserJoined(RCRTCRemoteUser remoteUser) {
             FinLog.d(TAG, "onUserJoined  remoteUser :" + remoteUser.getUserId());
-            // Toast.makeText(CallActivity.this, remoteUser.getUserId() + " " +
-            // getResources().getString(R.string.rtc_join_room), Toast.LENGTH_SHORT).show();
-
-            //        if (!mMembersMap.containsKey(remoteUser.getUserId())) {//为兼容2.0版本加入房间不会触发room
-            // info更新的情况，生成默认的ItemModel加入集合
-            //            ItemModel itemModel = new ItemModel();
-            //            itemModel.name = "";
-            //            itemModel.mode = "0";
-            //            itemModel.userId = remoteUser.getUserId();
-            //            mMembers.add(0, itemModel);
-            //        }
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
@@ -885,7 +883,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(CallActivity.this, getUserName(remoteUser.getUserId()) + " " + getResources().getString(R.string.rtc_quit_room), Toast.LENGTH_SHORT).show();
+                    showToastLengthLong(getUserName(remoteUser.getUserId()) + " " + getResources().getString(R.string.rtc_quit_room));
                     exitRoom(remoteUser.getUserId());
                     if (mMembers.size() <= 1) {
                         setWaitingTipsVisiable(true);
@@ -899,7 +897,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(CallActivity.this, getUserName(remoteUser.getUserId()) + " " + getResources().getString(R.string.rtc_user_offline), Toast.LENGTH_SHORT).show();
+                    showToastLengthLong(getUserName(remoteUser.getUserId()) + " " + getResources().getString(R.string.rtc_user_offline));
                     exitRoom(remoteUser.getUserId());
                     if (remoteUser.getUserId().equals(adminUserId)) {
                         adminUserId = null;
@@ -916,7 +914,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    final PromptDialog dialog = PromptDialog.newInstance(CallActivity.this, getString(R.string.rtc_status_im_error));
+                    final PromptDialog dialog = PromptDialog.newInstance(LookActivity.this, getString(R.string.rtc_status_im_error));
                     dialog.setPromptButtonClickedListener(new PromptDialog.OnPromptButtonClickedListener() {
                         @Override
                         public void onPositiveButtonClicked() {
@@ -976,11 +974,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (mMembers != null && mMembers.size() > 1) {
-                        updateNetworkSpeedInfo(statusReport);
-                    } else {
-                        initUIForWaitingStatus();
-                    }
                     unstableNetworkToast(statusReport);
                     // 只有Debug模式下才显示详细的调试信息
                     if (renderViewManager == null || !BuildConfig.DEBUG) {
@@ -991,17 +984,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         }
     };
 
-    private void initAudioMixing() {
-        AudioMixFragment.mixing = false;
-        AudioMixFragment.mixMode = AudioMixFragment.MODE_PLAY_MIX;
-        AudioMixFragment.audioPath = AudioMixFragment.DEFAULT_AUDIO_PATH;
-        Arrays.fill(AudioEffectFragment.preloaded, false);
-        AudioEffectFragment.loopCount = 1;
-        RCRTCAudioMixer.getInstance().setMixingVolume(100);
-        RCRTCAudioMixer.getInstance().setPlaybackVolume(100);
-        RCRTCEngine.getInstance().getDefaultAudioStream().adjustRecordingVolume(100);
-    }
-
+    //整理房间成员
     private void sortRoomMembers() {
         Collections.sort(
                 mMembers,
@@ -1027,35 +1010,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        intendToLeave(true);
-        super.onBackPressed();
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        if (popupWindow != null && popupWindow.isShowing()) {
-            popupWindow.dismiss();
-            popupWindow = null;
-        }
-        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            horizontalScreenViewInit();
-        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
-            verticalScreenViewInit();
-        }
-        if (renderViewManager != null
-                && null != unGrantedPermissions
-                && unGrantedPermissions.size() == 0) {
-            renderViewManager.rotateView();
-        }
-        if (mWaterFilter != null) {
-            boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
-            mWaterFilter.angleChange(isFrontCamera);
-        }
-    }
-
     /**
      * 初始化底部按钮 默认竖屏
      */
@@ -1064,7 +1018,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         ViewGroup.MarginLayoutParams mutelayoutParams =
                 (ViewGroup.MarginLayoutParams) btnMuteMic.getLayoutParams();
         mutelayoutParams.setMargins(
-                0, 0, dip2px(CallActivity.this, 50), dip2px(CallActivity.this, 16));
+                0, 0, dip2px(LookActivity.this, 50), dip2px(LookActivity.this, 16));
         btnMuteMic.setLayoutParams(mutelayoutParams);
     }
 
@@ -1073,28 +1027,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         return (int) (dpValue * scale + 0.5f);
     }
 
-    /**
-     * 准备离开当前房间
-     *
-     * @param initiative 是否主动退出，false为被踢的情况
-     */
-    private void intendToLeave(boolean initiative) {
-        FinLog.i(TAG, "intendToLeave()-> " + initiative);
-        cancelScreenCast(true);
-        if (null != sharingMap) {
-            sharingMap.clear();
-        }
-        if (initiative) {
-            selectAdmin();
-        } else {
-            kicked = true;
-        }
-        RCRTCAudioMixer.getInstance().stop();
-        // 当前用户是观察者 或 离开房间时还有其他用户存在，直接退出
-        if (screenOutputStream == null || IS_BENDI) {
-            disconnect();
-        }
-    }
 
     public void setWaitingTipsVisiable(boolean visiable) {
         if (visiable) {
@@ -1106,20 +1038,11 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                 handler.removeCallbacks(timeRun);
             }
             waitingTips.setVisibility(View.VISIBLE);
-            initUIForWaitingStatus();
         } else {
             waitingTips.setVisibility(View.GONE);
             if (tmp == View.VISIBLE) {
                 handler.postDelayed(timeRun, 1000);
             }
-        }
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (isInRoom) {
-            RCRTCEngine.getInstance().getDefaultVideoStream().stopCamera();
         }
     }
 
@@ -1130,183 +1053,20 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        destroyPopupWindow();
-        if (networkObserverTimer != null) {
-            networkObserverTimer.cancel();
-            networkObserverTimer = null;
-        }
-        HeadsetPlugReceiver.setOnHeadsetPlugListener(null);
-        if (headsetPlugReceiver != null) {
-            unregisterReceiver(headsetPlugReceiver);
-            headsetPlugReceiver = null;
-        }
-        HeadsetPlugReceiverState = false;
-        if (room != null) {
-            room.unregisterRoomListener();
-        }
-        RCRTCEngine.getInstance().unregisterStatusReportListener();
-        if (isConnected) {
-            RCRTCAudioMixer.getInstance().stop();
-            if (room != null) {
-                room.deleteRoomAttributes(Arrays.asList(myUserId), null, null);
-            }
-            RCRTCEngine.getInstance().leaveRoom(new IRCRTCResultCallback() {
-                @Override
-                public void onSuccess() {
-                    isInRoom = false;
-                }
-
-                @Override
-                public void onFailed(RTCErrorCode errorCode) {
-
-                }
-            });
-//            if (renderViewManager != null)
-            //                renderViewManager.destroyViews();
-
-        }
-
-        if (audioManager != null) {
-            audioManager.close();
-            audioManager = null;
-        }
-
-        if (handler != null) {
-            handler.removeCallbacks(memoryRunnable);
-            handler.removeCallbacks(timeRun);
-        }
-        handler = null;
-        super.onDestroy();
-        if (null != sharingMap) {
-            sharingMap.clear();
-        }
-
-        if (mWaterFilter != null) {
-            mWaterFilter.release();
-        }
-        if (mMirrorHelper != null) {
-            mMirrorHelper.release();
-        }
-        mMirrorHelper = null;
-        RCRTCMicOutputStream defaultAudioStream = RCRTCEngine.getInstance().getDefaultAudioStream();
-        if (defaultAudioStream != null) {
-            defaultAudioStream.setAudioDataListener(null);
-        }
-
-        RCRTCCameraOutputStream defaultVideoStream = RCRTCEngine.getInstance().getDefaultVideoStream();
-        if (defaultVideoStream != null) {
-            defaultVideoStream.setVideoFrameListener(null);
-        }
-        if (mSoundPool != null) {
-            mSoundPool.release();
-        }
-        mSoundPool = null;
-    }
-
     public void onToggleMic(boolean mute) {
         muteMicrophone = mute;
         RCRTCEngine.getInstance().getDefaultAudioStream().setMicrophoneDisable(muteMicrophone);
 //        RCRTCEngine.getInstance().getDefaultAudioStream().enableEarMonitoring(muteMicrophone);
     }
 
-    private void addAllVideoView() {
-        for (RCRTCRemoteUser remoteUser : room.getRemoteUsers()) {
-            addNewRemoteView(remoteUser); // 准备view
-        }
-    }
-
-    private IRCRTCResultDataCallback createLiveCallback() {
-        return new IRCRTCResultDataCallback<RCRTCLiveInfo>() {
-            @Override
-            public void onSuccess(RCRTCLiveInfo data) {
-                //直播房间
-                liveInfo = data;
-                // TODO URL上传到服务器
-                FinLog.d(TAG, "liveUrl::" + liveInfo.getLiveUrl());
-                JSONObject jsonObject = new JSONObject();
-                try {
-                    jsonObject.put(LiveDataOperator.ROOM_ID, liveInfo.getRoomId());
-                    jsonObject.put(LiveDataOperator.ROOM_NAME, liveInfo.getUserId());
-                    jsonObject.put(LiveDataOperator.LIVE_URL, liveInfo.getLiveUrl());
-                    jsonObject.put(LiveDataOperator.PUB_ID, liveInfo.getUserId());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                LiveDataOperator.getInstance().publish(jsonObject.toString(), new LiveDataOperator.OnResultCallBack() {
-                    @Override
-                    public void onSuccess(final String result) {
-                        postUIThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                showToast("直播房间上传成功！" + result);
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onFailed(final String error) {
-                        postUIThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                showToast("直播房间上传失败！" + error);
-                            }
-                        });
-                    }
-                });
-            }
-
-            @Override
-            public void onFailed(final RTCErrorCode errorCode) {
-                FinLog.e(TAG, "publish publish Failed()");
-                postUIThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(CallActivity.this, "发布资源失败 ：" + errorCode, Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        };
-    }
-
-    // Disconnect from remote resources, dispose of local resources, and exit.
-
-    private void startCalculateNetSpeed() {
-        if (networkSpeedHandler == null)
-            networkSpeedHandler = new Handler() {
-                @Override
-                public void handleMessage(Message msg) {
-                    if (msg.what == 1) {
-                        textViewNetSpeed.setText(getResources().getString(R.string.network_traffic_receive)
-                                + msg.getData().getLong("rcv")
-                                + "Kbps  "
-                                + getResources()
-                                .getString(R.string.network_traffic_send)
-                                + msg.getData().getLong("send")
-                                + "Kbps");
-                    }
-                    super.handleMessage(msg);
-                }
-            };
-    }
-
     private Runnable timeRun = new Runnable() {
         @Override
         public void run() {
             if (waitingTips != null && waitingTips.getVisibility() != View.VISIBLE) {
-                updateTimer();
                 handler.postDelayed(timeRun, 1000);
             }
         }
     };
-
-    private int time = 0;
-
-    private void updateTimer() {
-        time++;
-        textViewTime.setText(parseTimeSeconds(time));
-    }
 
     private String getUserName(String userId) {
         if (TextUtils.isEmpty(userId)) return userId;
@@ -1434,7 +1194,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         final boolean finalShouldToast = shouldToast;
         final String finalNetworkToast = networkToast;
 
-        runOnUiThread(
+        postUIThread(
                 new Runnable() {
                     @Override
                     public void run() {
@@ -1479,6 +1239,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         }
     }
 
+    //警报远程发布
     private void alertRemotePublished(final RCRTCRemoteUser remoteUser) {
         Log.i(TAG, "alertRemotePublished() start");
         addNewRemoteView(remoteUser);
@@ -1500,48 +1261,20 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         });
     }
 
-    private void subscribeAll() {
-        for (final RCRTCRemoteUser remoteUser : room.getRemoteUsers()) {
-            if (remoteUser.getStreams().size() == 0) {
-                continue;
-            }
-            localUser.subscribeStreams(remoteUser.getStreams(), new IRCRTCResultCallback() {
-                @Override
-                public void onSuccess() {
-                    postUIThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            updateResourceVideoView(remoteUser);
-                        }
-                    });
-                }
-
-                @Override
-                public void onFailed(RTCErrorCode errorCode) {
-                    FinLog.d(TAG, "subscribeAll subscribeStreams userId = " + remoteUser.getUserId() + ", errorCode =" + errorCode.getValue());
-                    // 50010 网络请求超时错误时，重试一次订阅操作
-                    if (RTCErrorCode.RongRTCCodeHttpTimeoutError.equals(errorCode) && remoteUser.getStreams() != null &&
-                            remoteUser.getStreams().size() > 0) {
-                        localUser.subscribeStreams(remoteUser.getStreams(), null);
-                    }
-                }
-            });
-        }
-    }
-
     private void addNewRemoteView(RCRTCRemoteUser remoteUser) {
         List<RCRTCVideoInputStream> videoStreamList = new ArrayList<>();
         List<RCRTCInputStream> remoteAVStreams = remoteUser.getStreams();
         RCRTCInputStream audioStream = null;
         // 标记对方是否发布了摄像头视频流
-        boolean cameraOpened = false;
+//        boolean cameraOpened = false;
         for (RCRTCInputStream inputStream : remoteAVStreams) {
-            if (inputStream.getMediaType() == RCRTCMediaType.VIDEO) {
-                videoStreamList.add((RCRTCVideoInputStream) inputStream);
-                if (TextUtils.equals(inputStream.getTag(), RCRTCStream.RONG_TAG)) {
-                    cameraOpened = true;
-                }
-            } else if (inputStream.getMediaType() == RCRTCMediaType.AUDIO) {
+//            if (inputStream.getMediaType() == RCRTCMediaType.VIDEO) {
+//                videoStreamList.add((RCRTCVideoInputStream) inputStream);
+//                if (TextUtils.equals(inputStream.getTag(), RCRTCStream.RONG_TAG)) {
+//                    cameraOpened = true;
+//                }
+//            } else
+            if (inputStream.getMediaType() == RCRTCMediaType.AUDIO) {
                 // 只处理默认音频流，如果是自定义音频流，不做UI展示
                 if (RCRTCStream.RONG_TAG.equals(inputStream.getTag())) {
                     audioStream = inputStream;
@@ -1560,92 +1293,19 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             String userName = userInfo != null ? userInfo.userName : "";
             if (videoStream != null && videoStream.getVideoView() == null && !TextUtils.isEmpty(videoStream.getTag()) && TextUtils.equals(videoStream.getTag(), RongRTCScreenCastHelper.VIDEO_TAG)) {
                 FinLog.v(TAG, "addNewRemoteView");
-                if (!renderViewManager.hasConnectedUser()) {
-                    startCalculateNetSpeed();
-                }
                 Log.d(TAG, "startCall: connectedUsers==2");
                 renderViewManager.userJoin(remoteUser.getUserId(), videoStream.getTag(), userName, talkType);
                 RCRTCVideoView remoteView = new RCRTCVideoView(this);
                 renderViewManager.setVideoView(false, remoteUser.getUserId(),
                         videoStream.getTag(), remoteUser.getUserId(), remoteView, talkType);
                 videoStream.setVideoView(remoteView);
-            } else if (videoStream == null && IS_BENDI) {     //audio 占位
+            } else if (videoStream == null && UserUtils.IS_BENDI) {     //audio 占位
                 Log.d(TAG, "startCall: connectedUsers==3");
                 renderViewManager.userJoin(remoteUser.getUserId(), RCRTCStream.RONG_TAG, userName, talkType);
                 RCRTCVideoView remoteView = new RCRTCVideoView(this);
                 renderViewManager.setVideoView(false, remoteUser.getUserId(), RCRTCStream.RONG_TAG, remoteUser.getUserId(), remoteView, talkType);
             }
         }
-    }
-
-    private void updateNetworkSpeedInfo(StatusReport statusReport) {
-        if (networkSpeedHandler != null) {
-            Message message = new Message();
-            Bundle bundle = new Bundle();
-            message.what = 1;
-            bundle.putLong("send", statusReport.bitRateSend);
-            bundle.putLong("rcv", statusReport.bitRateRcv);
-            message.setData(bundle);
-            networkSpeedHandler.sendMessage(message);
-        }
-    }
-
-    /**
-     * Initialize the UI to "waiting user join" IMConnectionStatus
-     */
-    private void initUIForWaitingStatus() {
-        if (time != 0) {
-            textViewTime.setText(getResources().getText(R.string.connection_duration));
-            textViewNetSpeed.setText(getResources().getText(R.string.network_traffic));
-        }
-        time = 0;
-    }
-
-    private void disconnect() {
-        isConnected = false;
-        LoadDialog.show(CallActivity.this);
-        if (room != null) {
-            room.deleteRoomAttributes(Collections.singletonList(myUserId), null, null);
-        }
-        RCRTCEngine.getInstance().leaveRoom(new IRCRTCResultCallback() {
-            @Override
-            public void onSuccess() {
-                postUIThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        FinLog.i(TAG, "quitRoom()->onUiSuccess");
-                        isInRoom = false;
-                        if (!kicked) {
-                            Toast.makeText(CallActivity.this, getResources().getString(R.string.quit_room_success), Toast.LENGTH_SHORT).show();
-                        }
-                        if (audioManager != null) {
-                            audioManager.close();
-                            audioManager = null;
-                        }
-                        LoadDialog.dismiss(CallActivity.this);
-                        finish();
-                    }
-                });
-            }
-
-            @Override
-            public void onFailed(RTCErrorCode errorCode) {
-                FinLog.i(TAG, "quitRoom()->onUiFailed : " + errorCode);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (audioManager != null) {
-                            audioManager.close();
-                            audioManager = null;
-                        }
-                        LoadDialog.dismiss(CallActivity.this);
-                        finish();
-                    }
-                });
-
-
-            }
-        });
     }
 
     private Runnable memoryRunnable = new Runnable() {
@@ -1673,50 +1333,9 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 
-    /**
-     * 横竖屏检测
-     *
-     * @param config return true:横屏
-     */
-    private boolean screenCofig(Configuration config) {
-        boolean screen = false; // 默认竖屏
-        try {
-            Configuration configuration = null;
-            if (config == null) {
-                configuration = this.getResources().getConfiguration();
-            } else {
-                configuration = config;
-            }
-            int ori = configuration.orientation;
-            if (ori == configuration.ORIENTATION_LANDSCAPE) {
-                screen = true;
-            } else if (ori == configuration.ORIENTATION_PORTRAIT) {
-                screen = false;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return screen;
-    }
-
-    public Boolean isSharing(String userid) {
-        if (sharingMap.size() == 0) {
-            return false;
-        }
-        if (sharingMap.containsKey(userid)) {
-            return sharingMap.get(userid);
-        } else {
-            return false;
-        }
-    }
-
     private void exitRoom(String userId) {
-        sharingMap.remove(userId);
         renderViewManager.delSelect(userId);
         renderViewManager.removeVideoView(userId);
-        if (!renderViewManager.hasConnectedUser()) { // 除我以为,无外人
-            initUIForWaitingStatus();
-        }
         mMembersMap.remove(userId);
         for (int i = mMembers.size() - 1; i >= 0; --i) {
             ItemModel model = mMembers.get(i);
@@ -1726,8 +1345,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             }
         }
     }
-
-    /*--------------------------------------------------------------------------AudioLevel---------------------------------------------------------------------------*/
 
     private void audiolevel(final int val, final String key) {
         postUIThread(new Runnable() {
@@ -1749,116 +1366,16 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         });
     }
 
-    /**
-     * 第一次加入房间初始化远端的容器位置
-     */
-    private void initRemoteScrollView() {
-        if (screenCofig(null)) {
-            horizontalScreenViewInit();
-        } else {
-            verticalScreenViewInit();
-        }
-    }
-
-    /**
-     * 横屏View改变
-     */
-    private void horizontalScreenViewInit() {
-        try {
-            RelativeLayout.LayoutParams lp3 = (RelativeLayout.LayoutParams) rel_sv.getLayoutParams();
-            lp3.addRule(RelativeLayout.BELOW, 0);
-
-            WindowManager wm = (WindowManager) this.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
-            int screenWidth = wm.getDefaultDisplay().getWidth();
-            int screenHeight = wm.getDefaultDisplay().getHeight();
-            int width = (screenHeight < screenWidth ? screenHeight : screenWidth) / 3;
-            ViewGroup.MarginLayoutParams mutelayoutParams = (ViewGroup.MarginLayoutParams) btnMuteMic.getLayoutParams();
-            mutelayoutParams.setMargins(0, 0, width, dip2px(CallActivity.this, 16));
-            btnMuteMic.setLayoutParams(mutelayoutParams);
-            if (null != horizontalScrollView) {
-                if (horizontalScrollView.getChildCount() > 0) {
-                    horizontalScrollView.removeAllViews();
-                }
-                horizontalScrollView.setVisibility(View.GONE);
-            }
-            if (null != scrollView) {
-                if (scrollView.getChildCount() > 0) {
-                    scrollView.removeAllViews();
-                }
-                scrollView.setVisibility(View.VISIBLE);
-                call_reder_container.setOrientation(LinearLayout.VERTICAL);
-                scrollView.addView(call_reder_container);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * 竖屏View改变
-     */
-    private void verticalScreenViewInit() {
-        initBottomBtn();
-        RelativeLayout.LayoutParams lp3 = (RelativeLayout.LayoutParams) rel_sv.getLayoutParams();
-        lp3.addRule(RelativeLayout.BELOW, titleContainer.getId());
-
-        if (null != scrollView) {
-            if (scrollView.getChildCount() > 0) {
-                scrollView.removeAllViews();
-            }
-            scrollView.setVisibility(View.GONE);
-        }
-        if (null != horizontalScrollView) {
-            if (horizontalScrollView.getChildCount() > 0) {
-                horizontalScrollView.removeAllViews();
-            }
-            horizontalScrollView.addView(call_reder_container);
-            horizontalScrollView.setVisibility(View.VISIBLE);
-            call_reder_container.setOrientation(LinearLayout.HORIZONTAL);
-        }
-    }
-
     @Override
     public void onClick(View v) {
         int id = v.getId();
         if (id == R.id.call_btn_hangup) {
             FinLog.i(TAG, "intendToLeave()-> call_btn_hangup");
             intendToLeave(true);
-        } else if (id == R.id.menu_switch) {
-            RCRTCEngine.getInstance().getDefaultVideoStream().switchCamera(new CameraVideoCapturer.CameraSwitchHandler() {
-                @Override
-                public void onCameraSwitchDone(boolean isFrontCamera) {
-                    if (mWaterFilter != null) {
-                        mWaterFilter.angleChange(isFrontCamera);
-                    }
-
-                }
-
-                @Override
-                public void onCameraSwitchError(String errorDescription) {
-
-                }
-            });
         } else if (id == R.id.menu_mute_mic) {
             CheckBox checkBox = (CheckBox) v;
             FinLog.i(TAG, "isMute : " + checkBox.isChecked());
             onToggleMic(checkBox.isChecked());
-        } else if (id == R.id.menu_mute_speaker) {
-            CheckBox checkBox;// 为防止频繁快速点击造成音频卡顿，增加点击间隔限制
-            if (Utils.isFastDoubleClick()) {
-                showToast(R.string.rtc_processing);
-                return;
-            }
-            destroyPopupWindow();
-            checkBox = (CheckBox) v;
-            this.muteSpeaker = checkBox.isChecked();
-            if (muteSpeaker) {
-                showToast(R.string.rtc_toast_switch_to_receiver);
-            } else {
-                showToast(R.string.rtc_toast_switch_to_speaker);
-            }
-            RCRTCEngine.getInstance().enableSpeaker(!this.muteSpeaker);
-            audioManager.onToggleSpeaker(!muteSpeaker);
         } else if (id == R.id.call_waiting_tips) {
             toggleActionButtons(buttonHangUp.getVisibility() == View.VISIBLE);
         }
@@ -1868,50 +1385,79 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     public void requestForScreenCast() {
         if (!screenCastEnable) {
             String toastInfo = getResources().getString(R.string.screen_cast_disabled);
-            Toast.makeText(this, toastInfo, Toast.LENGTH_SHORT).show();
+            showToastLengthLong(toastInfo);
             return;
         }
         MediaProjectionManager manager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         startActivityForResult(manager.createScreenCaptureIntent(), SCREEN_CAPTURE_REQUEST_CODE);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != SCREEN_CAPTURE_REQUEST_CODE || resultCode != Activity.RESULT_OK) {
-            return;
+    private void startBluetoothSco() {
+        AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (am != null) {
+            if (am.getMode() != AudioManager.MODE_IN_COMMUNICATION) {
+                am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            }
+            am.setSpeakerphoneOn(false);
+            am.startBluetoothSco();
         }
-        RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
-        videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_720_1280);
-        videoConfigBuilder.setVideoFps(RCRTCParamsType.RCRTCVideoFps.Fps_10);
-        screenOutputStream = RCRTCEngine.getInstance()
-                .createVideoStream(RongRTCScreenCastHelper.VIDEO_TAG, videoConfigBuilder.build());
-        screenCastHelper = new RongRTCScreenCastHelper();
-        screenCastHelper.init(this, screenOutputStream, data, 720, 1280);
-
-        RCRTCVideoView videoView = new RCRTCVideoView(this);
-        screenOutputStream.setVideoView(videoView);
-        screenCastHelper.start();
-
-        localUser.publishStream(screenOutputStream, new IRCRTCResultCallback() {
-            @Override
-            public void onSuccess() {
-            }
-
-            @Override
-            public void onFailed(RTCErrorCode errorCode) {
-                postUIThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        String toastInfo = getResources().getString(R.string.publish_failed);
-                        Toast.makeText(CallActivity.this, toastInfo, Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        });
     }
 
+    /**
+     * 镜像翻转采集的视频数据
+     *
+     * @param rtcVideoFrame
+     */
+    private void onMirrorVideoFrame(RCRTCVideoFrame rtcVideoFrame) {
+        boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
+        if (!UserUtils.IS_MIRROR || mMirrorHelper == null || !isFrontCamera) {
+            return;
+        }
+        long start = System.nanoTime();
+        if (rtcVideoFrame.getCaptureType() == RCRTCVideoFrame.CaptureType.TEXTURE) {
+            int newTextureId = mMirrorHelper.onMirrorImage(
+                    rtcVideoFrame.getTextureId(), rtcVideoFrame.getWidth(), rtcVideoFrame.getHeight());
+            rtcVideoFrame.setTextureId(newTextureId);
+        } else {
+            byte[] frameBytes = mMirrorHelper.onMirrorImage(
+                    rtcVideoFrame.getData(), rtcVideoFrame.getWidth(), rtcVideoFrame.getHeight());
+            rtcVideoFrame.setData(frameBytes);
+        }
+        Log.d(TAG, "onMirrorVideoFrame: " + (System.nanoTime() - start) * 1.0 / 1000000);
+    }
+
+
+    private int onDrawWater(int width, int height, int textureID) {
+        boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
+        if (mWaterFilter == null) {
+            Bitmap logoBitmap = TextureHelper.loadBitmap(this, R.drawable.logo);
+            mWaterFilter = new WaterMarkFilter(this, isFrontCamera, logoBitmap);
+        }
+        mWaterFilter.drawFrame(width, height, textureID, isFrontCamera);
+        return mWaterFilter.getTextureID();
+    }
+
+    /**
+     * 准备离开当前房间
+     *
+     * @param initiative 是否主动退出，false为被踢的情况
+     */
+    private void intendToLeave(boolean initiative) {
+        FinLog.i(TAG, "intendToLeave()-> " + initiative);
+        cancelScreenCast(true);
+        if (initiative) {
+            selectAdmin();
+        } else {
+            kicked = true;
+        }
+        RCRTCAudioMixer.getInstance().stop();
+        // 当前用户是观察者 或 离开房间时还有其他用户存在，直接退出
+        if (screenOutputStream == null || !UserUtils.IS_BENDI) {
+            disconnect();
+        }
+    }
+
+    //取消屏幕投射
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void cancelScreenCast(final boolean isHangup) {
         if (screenOutputStream == null || screenCastHelper != null) {
@@ -1955,12 +1501,12 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         }
     }
 
+    //选择管理员
     private void selectAdmin() {
         if (!TextUtils.equals(myUserId, adminUserId) || mMembersMap.size() <= 1) return;
         UserInfo userInfo = mMembersMap.get(mMembers.get(1).userId);
         if (userInfo == null) return;
-        RoomInfoMessage roomInfoMessage = new RoomInfoMessage(
-                userInfo.userId, userInfo.userName, userInfo.joinMode, userInfo.timestamp, true);
+        RoomInfoMessage roomInfoMessage = new RoomInfoMessage( userInfo.userId, userInfo.userName, userInfo.joinMode, userInfo.timestamp, true);
         JSONObject jsonObject = new JSONObject();
         try {
             jsonObject.put("userId", userInfo.userId);
@@ -1974,14 +1520,80 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         room.setRoomAttribute(userInfo.userId, jsonObject.toString(), roomInfoMessage, null);
     }
 
-    private void startBluetoothSco() {
-        AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        if (am != null) {
-            if (am.getMode() != AudioManager.MODE_IN_COMMUNICATION) {
-                am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+    //断开
+    private void disconnect() {
+        isConnected = false;
+        LoadDialog.show(LookActivity.this);
+        if (room != null) {
+            room.deleteRoomAttributes(Collections.singletonList(myUserId), null, null);
+        }
+        RCRTCEngine.getInstance().leaveRoom(new IRCRTCResultCallback() {
+            @Override
+            public void onSuccess() {
+                postUIThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        FinLog.i(TAG, "quitRoom()->onUiSuccess");
+                        isInRoom = false;
+                        if (!kicked) {
+                            showToastLengthLong(getResources().getString(R.string.quit_room_success));
+                        }
+                        if (audioManager != null) {
+                            audioManager.close();
+                            audioManager = null;
+                        }
+                        LoadDialog.dismiss(LookActivity.this);
+                        finish();
+                    }
+                });
             }
-            am.setSpeakerphoneOn(false);
-            am.startBluetoothSco();
+
+            @Override
+            public void onFailed(RTCErrorCode errorCode) {
+                FinLog.i(TAG, "quitRoom()->onUiFailed : " + errorCode);
+                postUIThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (audioManager != null) {
+                            audioManager.close();
+                            audioManager = null;
+                        }
+                        LoadDialog.dismiss(LookActivity.this);
+                        finish();
+                    }
+                });
+
+
+            }
+        });
+    }
+
+    @Override
+    public void onBackPressed() {
+        intendToLeave(true);
+        super.onBackPressed();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (popupWindow != null && popupWindow.isShowing()) {
+            popupWindow.dismiss();
+            popupWindow = null;
+        }
+        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            horizontalScreenViewInit();
+        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
+            verticalScreenViewInit();
+        }
+        if (renderViewManager != null
+                && null != unGrantedPermissions
+                && unGrantedPermissions.size() == 0) {
+            renderViewManager.rotateView();
+        }
+        if (mWaterFilter != null) {
+            boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
+            mWaterFilter.angleChange(isFrontCamera);
         }
     }
 
@@ -2012,13 +1624,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                 if (type == 0) {
                     startBluetoothSco();
                 }
-                if (null != btnMuteSpeaker) {
-                    btnMuteSpeaker.setBackgroundResource(R.drawable.img_capture_gray);
-                    btnMuteSpeaker.setSelected(false);
-                    btnMuteSpeaker.setEnabled(false);
-                    btnMuteSpeaker.setClickable(false);
-                    audioManager.onToggleSpeaker(false);
-                }
+                audioManager.onToggleSpeaker(false);
             } else {
                 if (type == 1 && BluetoothUtil.hasBluetoothA2dpConnected()) {
                     return;
@@ -2033,15 +1639,9 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                         am.setBluetoothScoOn(false);
                         am.setSpeakerphoneOn(!muteSpeaker);
                     } else {
-//                        RCRTCEngine.getInstance().enableSpeaker(!this.muteSpeaker);
+                        RCRTCEngine.getInstance().enableSpeaker(!this.muteSpeaker);
                     }
                     audioManager.onToggleSpeaker(!muteSpeaker);
-                }
-                if (null != btnMuteSpeaker) {
-                    btnMuteSpeaker.setBackgroundResource(R.drawable.selector_checkbox_capture);
-                    btnMuteSpeaker.setSelected(false);
-                    btnMuteSpeaker.setEnabled(true);
-                    btnMuteSpeaker.setClickable(true);
                 }
             }
         } catch (Exception e) {
@@ -2049,38 +1649,150 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         }
     }
 
-    /**
-     * 镜像翻转采集的视频数据
-     *
-     * @param rtcVideoFrame
-     */
-    private void onMirrorVideoFrame(RCRTCVideoFrame rtcVideoFrame) {
-        boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
-        if (!UserUtils.IS_MIRROR || mMirrorHelper == null || !isFrontCamera) {
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        unGrantedPermissions.clear();
+        for (int i = 0; i < permissions.length; i++) {
+            if (grantResults[i] == PackageManager.PERMISSION_DENIED)
+                unGrantedPermissions.add(permissions[i]);
+        }
+        for (String permission : unGrantedPermissions) {
+            if (!ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+                showToastLengthLong(getString(R.string.PermissionStr) + permission + getString(R.string.plsopenit));
+                finish();
+            } else ActivityCompat.requestPermissions(this, new String[]{permission}, 0);
+        }
+        if (unGrantedPermissions.size() == 0) {
+            startCall();
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != SCREEN_CAPTURE_REQUEST_CODE || resultCode != Activity.RESULT_OK) {
             return;
         }
-        long start = System.nanoTime();
-        if (rtcVideoFrame.getCaptureType() == RCRTCVideoFrame.CaptureType.TEXTURE) {
-            int newTextureId = mMirrorHelper.onMirrorImage(
-                    rtcVideoFrame.getTextureId(), rtcVideoFrame.getWidth(), rtcVideoFrame.getHeight());
-            rtcVideoFrame.setTextureId(newTextureId);
+        RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
+        videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_720_1280);
+        videoConfigBuilder.setVideoFps(RCRTCParamsType.RCRTCVideoFps.Fps_10);
+        screenOutputStream = RCRTCEngine.getInstance()
+                .createVideoStream(RongRTCScreenCastHelper.VIDEO_TAG, videoConfigBuilder.build());
+        RCRTCVideoView videoView = new RCRTCVideoView(this);
+        screenOutputStream.setVideoView(videoView);
+        screenCastHelper = new RongRTCScreenCastHelper();
+        if (Build.VERSION.SDK_INT > 28) { // 如果 SDK 版本大于28，需要启动一个前台service来录屏
+            Intent service = new Intent(this, ScreenCastService.class);
+            serviceConnection = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+                    screenCastHelper.init(getApplicationContext(), screenOutputStream, data, 720, 1280);
+                    screenCastHelper.start();
+                }
+
+                @Override
+                public void onServiceDisconnected(ComponentName componentName) {
+
+                }
+            };
+            this.bindService(service, serviceConnection, BIND_AUTO_CREATE);
         } else {
-            byte[] frameBytes = mMirrorHelper.onMirrorImage(
-                    rtcVideoFrame.getData(), rtcVideoFrame.getWidth(), rtcVideoFrame.getHeight());
-            rtcVideoFrame.setData(frameBytes);
+            screenCastHelper.init(this.getApplicationContext(), screenOutputStream, data, 720, 1280);
+            screenCastHelper.start();
         }
-        Log.d(TAG, "onMirrorVideoFrame: " + (System.nanoTime() - start) * 1.0 / 1000000);
+
+        localUser.publishStream(screenOutputStream, new IRCRTCResultCallback() {
+            @Override
+            public void onSuccess() {
+
+            }
+
+            @Override
+            public void onFailed(RTCErrorCode errorCode) {
+                if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
+                    publishResource();
+                }
+            }
+        });
     }
 
-
-    private int onDrawWater(int width, int height, int textureID) {
-        boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
-        if (mWaterFilter == null) {
-            Bitmap logoBitmap = TextureHelper.loadBitmap(this, R.drawable.logo);
-            mWaterFilter = new WaterMarkFilter(this, isFrontCamera, logoBitmap);
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (isInRoom) {
+            RCRTCEngine.getInstance().getDefaultVideoStream().stopCamera();
         }
-        mWaterFilter.drawFrame(width, height, textureID, isFrontCamera);
-        return mWaterFilter.getTextureID();
     }
-    /**bug调试文件        end*/
+
+    @Override
+    protected void onDestroy() {
+        destroyPopupWindow();
+        if (networkObserverTimer != null) {
+            networkObserverTimer.cancel();
+            networkObserverTimer = null;
+        }
+        HeadsetPlugReceiver.setOnHeadsetPlugListener(null);
+        if (headsetPlugReceiver != null) {
+            unregisterReceiver(headsetPlugReceiver);
+            headsetPlugReceiver = null;
+        }
+        HeadsetPlugReceiverState = false;
+        if (room != null) {
+            room.unregisterRoomListener();
+        }
+        RCRTCEngine.getInstance().unregisterStatusReportListener();
+        if (isConnected) {
+            RCRTCAudioMixer.getInstance().stop();
+            if (room != null) {
+                room.deleteRoomAttributes(Arrays.asList(myUserId), null, null);
+            }
+            RCRTCEngine.getInstance().leaveRoom(new IRCRTCResultCallback() {
+                @Override
+                public void onSuccess() {
+                    isInRoom = false;
+                }
+
+                @Override
+                public void onFailed(RTCErrorCode errorCode) {
+
+                }
+            });
+//            if (renderViewManager != null)
+            //                renderViewManager.destroyViews();
+
+        }
+
+        if (audioManager != null) {
+            audioManager.close();
+            audioManager = null;
+        }
+
+        if (handler != null) {
+            handler.removeCallbacks(memoryRunnable);
+            handler.removeCallbacks(timeRun);
+        }
+        handler = null;
+        super.onDestroy();
+        if (mWaterFilter != null) {
+            mWaterFilter.release();
+        }
+        if (mMirrorHelper != null) {
+            mMirrorHelper.release();
+        }
+        mMirrorHelper = null;
+        RCRTCMicOutputStream defaultAudioStream = RCRTCEngine.getInstance().getDefaultAudioStream();
+        if (defaultAudioStream != null) {
+            defaultAudioStream.setAudioDataListener(null);
+        }
+
+        RCRTCCameraOutputStream defaultVideoStream = RCRTCEngine.getInstance().getDefaultVideoStream();
+        if (defaultVideoStream != null) {
+            defaultVideoStream.setVideoFrameListener(null);
+        }
+        if (mSoundPool != null) {
+            mSoundPool.release();
+        }
+        mSoundPool = null;
+    }
 }

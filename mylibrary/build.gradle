@@ -37,7 +37,7 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 //call_kit、call_lib、im_kit、im_lib的版本号码必须一致
     api 'cn.rongcloud.sdk:im_lib:5.0.0' // 即时通讯基础能力库
-    api 'cn.rongcloud.sdk:call_lib:5.0.0' // 音视频呼叫信令
+    api 'cn.rongcloud.sdk:rtc_lib:5.0.0'  // 音视频基础能力库
 
     implementation("com.github.bumptech.glide:glide:4.9.0") {
         exclude group: "com.android.support"

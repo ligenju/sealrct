@@ -25,7 +25,8 @@
     <application
         android:allowBackup="false"
         android:supportsRtl="true">
-        <activity android:name=".AudioMixActivity"
+        <activity
+            android:name=".AudioMixActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:theme="@style/Theme.Transparent"></activity>
         <activity
@@ -33,10 +34,12 @@
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:launchMode="singleTop"
             android:resizeableActivity="true" />
+
         <service
             android:name="com.my.mylibrary.screen_cast.ScreenCastService"
             android:enabled="true"
             android:foregroundServiceType="mediaProjection" />
+        <activity android:name=".base.RongRTCBaseActivity" />
     </application>
 
 </manifest>

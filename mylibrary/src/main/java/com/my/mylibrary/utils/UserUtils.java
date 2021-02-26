@@ -17,8 +17,6 @@ public class UserUtils {
     public static String ROOMID = "123456";
     public static String USER_NAME = "123456";
     public static Activity activity;
-    //连接状态 0未连接  1=共享   2=视频检查
-    public static int CONNECTION_STATUS = 0;
     //设置音频视频
     public static boolean KEY_USE_AV_SETTING = true;
     //是音频音乐
@@ -46,7 +44,7 @@ public class UserUtils {
     //音频噪声高通滤波器
     public static boolean AUDIO_NOISE_HIGH_PASS_FILTER = true;
     //启用AUDIO回声过滤器
-    public static boolean AUDIO_ECHO_CANCEL_FILTER_ENABLE = true;
+    public static boolean AUDIO_ECHO_CANCEL_FILTER_ENABLE = false;
     //音频AGC控制启用
     public static boolean AUDIO_AGC_CONTROL_ENABLE = true;
     //音频AGC限制器启用

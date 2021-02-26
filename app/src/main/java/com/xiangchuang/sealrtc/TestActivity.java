@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
@@ -15,10 +16,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.my.mylibrary.OnRongYunConnectionMonitoring;
 import com.my.mylibrary.RongRTC;
 import com.my.mylibrary.utils.UserUtils;
 
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,7 +38,7 @@ public class TestActivity extends AppCompatActivity {
             "android.permission.BLUETOOTH"
     };
     private int type = 0;
-
+    private static final String TAG = "TestActivity";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,47 +60,77 @@ public class TestActivity extends AppCompatActivity {
                 checkPermissions();
             }
         });
-        RongRTC.newInstance().setOnRongYunConnectionMonitoring(new RongRTC.OnRongYunConnectionMonitoring() {
+        RongRTC.newInstance().setOnRongYunConnectionMonitoring(new OnRongYunConnectionMonitoring() {
             @Override
-            public void onConnectionSucceeded(boolean isAdmin) {
-                startActivity(new Intent(TestActivity.this, CameraActivity.class));
+            public void onTokenFail() {
+
             }
 
             @Override
-            public void onConnectionFailure(String err) {
-                Toast.makeText(TestActivity.this, err, Toast.LENGTH_SHORT).show();
+            public void onConnectionRongYunFailed(String err) {
+                showToast(err);
+            }
+
+            @Override
+            public void onConnectedToTheRoomSuccessfully(boolean isShare, boolean isAdmin) {
+                if (isShare) {
+                    startActivity(new Intent(TestActivity.this, CameraActivity.class));
+                } else {
+                    RongRTC.newInstance().startCallActivity(isAdmin);
+                }
+            }
+
+            @Override
+            public void onFailedToConnectToRoom(String err) {
+                showToast(err);
+            }
+
+            @Override
+            public void onFailedToShareScreen(String err) {
+                showToast(err);
+            }
+
+            @Override
+            public void onSuccessfullySubscribed() {
+//                showToast("成功订阅");
+                Log.d(TAG, "成功订阅");
+            }
+
+            @Override
+            public void onFailedSubscription(String err) {
+                showToast(err);
+            }
+
+            @Override
+            public void onUserOffline(String name) {
+                showToast(name + "   离线");
+            }
+
+            @Override
+            public void onUserLeft(String name) {
+                showToast(name + "  退出房间");
+            }
+
+            @Override
+            public void onSuccessfullyExitTheRoom() {
+                showToast("退出房间成功");
+            }
+
+            @Override
+            public void onReceiveMessage(String message) {
+                showToast(message);
+            }
+
+            @Override
+            public void onDestroyed() {
+
             }
         });
 
+    }
 
-//        findViewById(R.id.tv_start).setOnClickListener(new View.OnClickListener() {
-//            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-//            @Override
-//            public void onClick(View v) {
-////                "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com";
-//                RongRTC.newInstance().start(TestActivity.this, null, "gsSBpAXZZ5OItvR8NSqhVwK82I/z0wqC//TahGlzUxE=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com", "123456", "夫子", false);
-//            }
-//        });
-////        RongRTC.newInstance().setOnRongYunConnectionMonitoring(new RongRTC.OnRongYunConnectionMonitoring() {
-////            @Override
-////            public void onConnectionSucceeded(boolean isAdmin) {
-//////                Intent intent = new Intent(TestActivity.this, MeetingActivity.class);
-//////                intent.putExtra(MeetingActivity.EXTRA_IS_MASTER, isAdmin);
-//////                startActivity(intent);
-////            }
-////
-////            @Override
-////            public void onConnectionFailure(String err) {
-////                Toast.makeText(TestActivity.this, "加入房间失败==" + err, Toast.LENGTH_SHORT).show();
-////            }
-////        });
-//        findViewById(R.id.tv_add).setOnClickListener(new View.OnClickListener() {
-//            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-//            @Override
-//            public void onClick(View v) {
-//                RongRTC.newInstance().start(TestActivity.this, null, "XrTYM5R34fQ67xZOZh3hFJAKNXH6t6upD8mOnYFfJ5g=@d00m.cn.rongnav.com;d00m.cn.rongcfg.com","123456", "观看者", false);
-//            }
-//        });
+    private void showToast(String err) {
+        Toast.makeText(this, err, Toast.LENGTH_SHORT).show();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
@@ -115,7 +146,7 @@ public class TestActivity extends AppCompatActivity {
             if (type == 1)
                 RongRTC.newInstance().getMediaProjectionService(TestActivity.this);
             else
-                RongRTC.newInstance().start(TestActivity.this, null, "RVHMoPiaLKvNUA+voneA9FjcrJI7YoQZnUY8m94JVxc=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", UserUtils.ROOMID, "查看者", false);
+                RongRTC.newInstance().start(TestActivity.this, null, "RVHMoPiaLKvNUA+voneA9FjcrJI7YoQZnUY8m94JVxc=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", UserUtils.ROOMID, "查看者");
         } else { // 部分权限未获得，重新请求获取权限
             String[] array = new String[unGrantedPermissions.size()];
             ActivityCompat.requestPermissions(this, unGrantedPermissions.toArray(array), 0);
@@ -136,7 +167,10 @@ public class TestActivity extends AppCompatActivity {
             } else ActivityCompat.requestPermissions(this, new String[]{permission}, 0);
         }
         if (unGrantedPermissions.size() == 0) {
-            RongRTC.newInstance().getMediaProjectionService(TestActivity.this);
+            if (type == 1)
+                RongRTC.newInstance().getMediaProjectionService(TestActivity.this);
+            else
+                RongRTC.newInstance().start(TestActivity.this, null, "RVHMoPiaLKvNUA+voneA9FjcrJI7YoQZnUY8m94JVxc=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", UserUtils.ROOMID, "查看者");
         }
     }
 
@@ -147,19 +181,13 @@ public class TestActivity extends AppCompatActivity {
             return;
         }
         UserUtils.IS_BENDI = true;
-        RongRTC.newInstance().start(this, data, "RVHMoPiaLKvZcRsdkrdfAVjcrJI7YoQZsqcINLIIaFE=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", "123456", "播放者", true);
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        RongRTC.newInstance().onStop();
+        RongRTC.newInstance().start(this, data, "RVHMoPiaLKvZcRsdkrdfAVjcrJI7YoQZsqcINLIIaFE=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", "123456", "播放者");
     }
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
         RongRTC.newInstance().onDestroy();
+        super.onDestroy();
     }
 
 }

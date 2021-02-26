@@ -60,7 +60,7 @@ public class HomeWatcherReceiver extends BroadcastReceiver {
 
     public static void registerHomeKeyReceiver(Context context) {
         Log.i(LOG_TAG, "registerHomeKeyReceiver");
-        if (mHomeKeyReceiver != null) {
+        if (mHomeKeyReceiver == null) {
             mHomeKeyReceiver = new HomeWatcherReceiver();
             final IntentFilter homeFilter = new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
             context.registerReceiver(mHomeKeyReceiver, homeFilter);
