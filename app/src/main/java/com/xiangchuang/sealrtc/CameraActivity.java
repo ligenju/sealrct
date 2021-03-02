@@ -35,7 +35,7 @@ public class CameraActivity extends AppCompatActivity {
         findViewById(R.id.call_btn_hangup).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                RongRTC.newInstance().intendToLeave(true);
+                RongRTC.newInstance().intendToLeave(true, "");
             }
         });
     }

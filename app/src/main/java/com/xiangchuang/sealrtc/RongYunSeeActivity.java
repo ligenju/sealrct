@@ -35,6 +35,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
@@ -46,12 +47,10 @@ import com.my.mylibrary.AudioEffectFragment;
 import com.my.mylibrary.AudioMixFragment;
 import com.my.mylibrary.LiveDataOperator;
 import com.my.mylibrary.RongRTC;
-import com.my.mylibrary.base.RongRTCBaseActivity;
 import com.my.mylibrary.bean.ItemModel;
 import com.my.mylibrary.bean.UserInfo;
 import com.my.mylibrary.call.AppRTCAudioManager;
 import com.my.mylibrary.call.VideoViewManager;
-import com.my.mylibrary.dialog.LoadDialog;
 import com.my.mylibrary.dialog.PromptDialog;
 import com.my.mylibrary.message.RoomInfoMessage;
 import com.my.mylibrary.message.RoomKickOffMessage;
@@ -65,7 +64,6 @@ import com.my.mylibrary.utils.RongRTCPopupWindow;
 import com.my.mylibrary.utils.RongRTCTalkTypeUtil;
 import com.my.mylibrary.utils.UserUtils;
 import com.my.mylibrary.utils.Utils;
-import com.my.mylibrary.view.ContainerLayout;
 import com.my.mylibrary.watersign.TextureHelper;
 import com.my.mylibrary.watersign.WaterMarkFilter;
 
@@ -84,6 +82,7 @@ import java.util.Map;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import butterknife.Unbinder;
 import cn.rongcloud.rtc.api.RCRTCAudioMixer;
 import cn.rongcloud.rtc.api.RCRTCEngine;
 import cn.rongcloud.rtc.api.RCRTCLocalUser;
@@ -113,7 +112,6 @@ import cn.rongcloud.rtc.base.RCRTCResourceState;
 import cn.rongcloud.rtc.base.RCRTCStream;
 import cn.rongcloud.rtc.base.RCRTCVideoFrame;
 import cn.rongcloud.rtc.base.RTCErrorCode;
-import cn.rongcloud.rtc.core.CameraVideoCapturer;
 import cn.rongcloud.rtc.utils.FinLog;
 import io.rong.imlib.RongIMClient;
 import io.rong.imlib.model.Message;
@@ -121,8 +119,8 @@ import io.rong.imlib.model.MessageContent;
 
 import static io.rong.imlib.RongIMClient.ConnectionStatusListener.ConnectionStatus.NETWORK_UNAVAILABLE;
 
-public class LookActivity extends AppCompatActivity implements OnHeadsetPlugListener {
-    private static String TAG = "LookActivity";
+public class RongYunSeeActivity extends AppCompatActivity implements OnHeadsetPlugListener {
+    private static String TAG = "RongYunSeeActivity";
     private static final int SCREEN_CAPTURE_REQUEST_CODE = 10101;
 
     // List of mandatory application unGrantedPermissions.
@@ -151,8 +149,6 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
     ScrollView scrollView;
     @BindView(R.id.rel_sv)
     RelativeLayout rel_sv;
-    @BindView(R.id.menu_switch)
-    AppCompatCheckBox btnSwitchCamera;
     @BindView(R.id.menu_mute_speaker)
     AppCompatCheckBox btnMuteSpeaker;
     @BindView(R.id.call_more_container)
@@ -201,12 +197,13 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
     private RCRTCLiveInfo liveInfo;
     List<String> unGrantedPermissions;
     private MirrorImageHelper mMirrorHelper;
-
+    private Unbinder unbinder;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         HeadsetPlugReceiver.setOnHeadsetPlugListener(this);
+
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction("android.intent.action.HEADSET_PLUG");
         intentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
@@ -215,7 +212,6 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
         intentFilter.addAction(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED);
         headsetPlugReceiver = new HeadsetPlugReceiver(BluetoothUtil.hasBluetoothA2dpConnected());
         registerReceiver(headsetPlugReceiver, intentFilter);
-
         // Set window styles for fullscreen-window size. Needs to be done before
         // adding content.
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -224,7 +220,8 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
                 | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         setContentView(R.layout.activity_call);
-        ButterKnife.bind(this);
+        unbinder = ButterKnife.bind(this);
+        RongRTC.newInstance().addActivity(this);
 
         // Get Intent parameters.
         final Intent intent = getIntent();
@@ -284,8 +281,6 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
     }
 
     private void initViews() {
-        toggleCameraMicViewStatus();
-
         renderViewManager = new VideoViewManager();
         renderViewManager.setActivity(this);
         renderViewManager.setOnToggleListener(new VideoViewManager.OnToggleListener() {
@@ -336,24 +331,6 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
     }
 
     /**
-     * 切换相机麦克风视图状态
-     */
-    private void toggleCameraMicViewStatus() {
-        Log.i(TAG, "toggleCameraMicViewStatus() IS_OBSERVER = " + UserUtils.IS_OBSERVER + " IS_VIDEO_MUTE = " + UserUtils.IS_VIDEO_MUTE);
-        if (UserUtils.IS_OBSERVER) {
-            btnSwitchCamera.setVisibility(View.GONE);
-            btnMuteMic.setVisibility(View.GONE);
-        } else {
-            if (UserUtils.IS_VIDEO_MUTE) {
-                btnSwitchCamera.setEnabled(false);
-            } else {
-                btnSwitchCamera.setEnabled(true);
-                btnSwitchCamera.setVisibility(View.VISIBLE);
-            }
-        }
-    }
-
-    /**
      * 改变屏幕上除了视频通话之外的其他视图可见状态
      */
     private void toggleActionButtons(boolean isHidden) {
@@ -390,7 +367,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
                 int type = -1;
                 if (BluetoothUtil.hasBluetoothA2dpConnected()) {
                     type = 0;
-                } else if (BluetoothUtil.isWiredHeadsetOn(LookActivity.this)) {
+                } else if (BluetoothUtil.isWiredHeadsetOn(RongYunSeeActivity.this)) {
                     type = 1;
                 }
                 if (type != -1) {
@@ -612,7 +589,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    final PromptDialog dialog = PromptDialog.newInstance(LookActivity.this, getString(R.string.rtc_dialog_kicked_by_server));
+                    final PromptDialog dialog = PromptDialog.newInstance(RongYunSeeActivity.this, getString(R.string.rtc_dialog_kicked_by_server));
                     dialog.setPromptButtonClickedListener(new PromptDialog.OnPromptButtonClickedListener() {
                         @Override
                         public void onPositiveButtonClicked() {
@@ -637,11 +614,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (UserUtils.IS_AUTO_TEST) { // 自动化测试会有红点
-                        renderViewManager.onTrackadd(userId, tag);
-                    }
-                    if (TextUtils.equals(tag, UserUtils.CUSTOM_FILE_TAG)) {
-                    } else if (TextUtils.equals(tag, RongRTCScreenCastHelper.VIDEO_TAG)) {
+                    if (TextUtils.equals(tag, RongRTCScreenCastHelper.VIDEO_TAG)) {
                         screenCastEnable = false;
                     }
                 }
@@ -717,8 +690,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
                     } else if (messageContent instanceof RoomKickOffMessage) {
                         RoomKickOffMessage kickOffMessage = (RoomKickOffMessage) messageContent;
                         if (myUserId.equals(kickOffMessage.getUserId())) {
-                            FinLog.i(TAG, "kickOffMessage-intendToLeave");
-                            intendToLeave(false);
+                            RongRTC.newInstance().discontinueSharing("您被踢出会议");
                         }
                     }
                 }
@@ -728,14 +700,6 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
         @Override
         public void onFirstRemoteVideoFrame(final String userId, final String tag) {
             Log.i(TAG, "onFirstFrameDraw() userId: " + userId + " ,tag = " + tag);
-            postUIThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (UserUtils.IS_AUTO_TEST) {
-                        renderViewManager.onFirstFrameDraw(userId, tag);
-                    }
-                }
-            });
         }
 
         @Override
@@ -770,8 +734,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
                     for (RCRTCInputStream stream : streams) {
                         if (stream.getMediaType().equals(RCRTCMediaType.VIDEO)) {
                             renderViewManager.removeVideoView(false, remoteUser.getUserId(), stream.getTag());
-                            if (TextUtils.equals(stream.getTag(), UserUtils.CUSTOM_FILE_TAG)) {
-                            } else if (TextUtils.equals(stream.getTag(), RongRTCScreenCastHelper.VIDEO_TAG)) {
+                            if (TextUtils.equals(stream.getTag(), RongRTCScreenCastHelper.VIDEO_TAG)) {
                                 screenCastEnable = true;
                             }
                         }
@@ -829,7 +792,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    final PromptDialog dialog = PromptDialog.newInstance(LookActivity.this, getString(R.string.rtc_status_im_error));
+                    final PromptDialog dialog = PromptDialog.newInstance(RongYunSeeActivity.this, getString(R.string.rtc_status_im_error));
                     dialog.setPromptButtonClickedListener(new PromptDialog.OnPromptButtonClickedListener() {
                         @Override
                         public void onPositiveButtonClicked() {
@@ -893,10 +856,6 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
                 @Override
                 public void run() {
                     unstableNetworkToast(statusReport);
-                    // 只有Debug模式下才显示详细的调试信息
-                    if (renderViewManager == null || !BuildConfig.DEBUG) {
-                        return;
-                    }
                 }
             });
         }
@@ -953,7 +912,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
         ViewGroup.MarginLayoutParams mutelayoutParams =
                 (ViewGroup.MarginLayoutParams) btnMuteMic.getLayoutParams();
         mutelayoutParams.setMargins(
-                0, 0, dip2px(LookActivity.this, 50), dip2px(LookActivity.this, 16));
+                0, 0, dip2px(RongYunSeeActivity.this, 50), dip2px(RongYunSeeActivity.this, 16));
         btnMuteMic.setLayoutParams(mutelayoutParams);
     }
 
@@ -1497,7 +1456,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
             int screenHeight = wm.getDefaultDisplay().getHeight();
             int width = (screenHeight < screenWidth ? screenHeight : screenWidth) / 3;
             ViewGroup.MarginLayoutParams mutelayoutParams = (ViewGroup.MarginLayoutParams) btnMuteMic.getLayoutParams();
-            mutelayoutParams.setMargins(0, 0, width, dip2px(LookActivity.this, 16));
+            mutelayoutParams.setMargins(0, 0, width, dip2px(RongYunSeeActivity.this, 16));
             btnMuteMic.setLayoutParams(mutelayoutParams);
             if (null != horizontalScrollView) {
                 if (horizontalScrollView.getChildCount() > 0) {
@@ -1558,7 +1517,8 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
      *
      * @param initiative 是否主动退出，false为被踢的情况
      */
-    public void intendToLeave(boolean initiative) {
+    public void intendToLeave(boolean initiative, String reason) {
+//        showLoadDialog();
         FinLog.i(TAG, "intendToLeave()-> " + initiative);
         if (initiative) {
             selectAdmin();
@@ -1567,16 +1527,14 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
         }
         RCRTCAudioMixer.getInstance().stop();
         // 当前用户是观察者 或 离开房间时还有其他用户存在，直接退出
-        disconnect();
+        disconnect(reason);
     }
 
     /**
      * 取消屏幕投射
-     *
-     * @param isHangup
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    private void cancelScreenCast(final boolean isHangup) {
+    private void cancelScreenCast() {
         if (screenOutputStream == null || screenCastHelper != null) {
             return;
         }
@@ -1585,30 +1543,12 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
         localUser.unpublishStream(screenOutputStream, new IRCRTCResultCallback() {
             @Override
             public void onSuccess() {
-                postUIThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        renderViewManager.removeVideoView(true, myUserId, screenOutputStream.getTag());
-                        screenOutputStream = null;
-                        if (isHangup) {
-                            disconnect();
-                        }
-                    }
-                });
+                screenOutputStream = null;
             }
 
             @Override
             public void onFailed(final RTCErrorCode errorCode) {
-                postUIThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        renderViewManager.removeVideoView(true, myUserId, screenOutputStream.getTag());
-                        screenOutputStream = null;
-                        if (isHangup) {
-                            disconnect();
-                        }
-                    }
-                });
+                screenOutputStream = null;
             }
         });
     }
@@ -1638,28 +1578,28 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
     /**
      * 断开房间
      */
-    private void disconnect() {
+    private void disconnect(String reason) {
         isConnected = false;
-        LoadDialog.show(LookActivity.this);
         if (room != null) {
             room.deleteRoomAttributes(Collections.singletonList(myUserId), null, null);
         }
         RCRTCEngine.getInstance().leaveRoom(new IRCRTCResultCallback() {
             @Override
             public void onSuccess() {
-                cancelScreenCast(true);
+                if (UserUtils.IS_BENDI)
+                    cancelScreenCast();
                 postUIThread(new Runnable() {
                     @Override
                     public void run() {
                         FinLog.i(TAG, "quitRoom()->onUiSuccess");
                         if (!kicked) {
-                            showToastLengthLong("退出房间成功");
+                            showToastLengthLong(TextUtils.isEmpty(reason) ? "退出成功" : reason);
                         }
                         if (audioManager != null) {
                             audioManager.close();
                             audioManager = null;
                         }
-                        LoadDialog.dismiss(LookActivity.this);
+//                        dismissLoadDialog();
                         finish();
                     }
                 });
@@ -1667,16 +1607,20 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
 
             @Override
             public void onFailed(RTCErrorCode errorCode) {
-                cancelScreenCast(true);
+                if (UserUtils.IS_BENDI)
+                    cancelScreenCast();
                 FinLog.i(TAG, "quitRoom()->onUiFailed : " + errorCode);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        if (!kicked) {
+                            showToastLengthLong(TextUtils.isEmpty(reason) ? "退出成功" : reason);
+                        }
                         if (audioManager != null) {
                             audioManager.close();
                             audioManager = null;
                         }
-                        LoadDialog.dismiss(LookActivity.this);
+//                        dismissLoadDialog();
                         finish();
                     }
                 });
@@ -1898,7 +1842,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
 
     @Override
     public void onBackPressed() {
-        RongRTC.newInstance().discontinueSharing();
+        RongRTC.newInstance().discontinueSharing("");
     }
 
     @Override
@@ -1918,7 +1862,6 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
             startCall();
         }
     }
-
 
     @Override
     protected void onDestroy() {
@@ -1989,28 +1932,19 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
         if (mSoundPool != null) {
             mSoundPool.release();
         }
+        if (RongRTC.newInstance().getActivityList() != null && RongRTC.newInstance().getActivityList().size() > 0) {
+            RongRTC.newInstance().getActivityList().clear();
+        }
         mSoundPool = null;
+
+        if (unbinder != null) {
+            unbinder.unbind();
+        }
     }
 
-    @OnClick({R.id.menu_switch, R.id.menu_mute_speaker, R.id.call_btn_hangup, R.id.menu_mute_mic, R.id.call_waiting_tips})
+    @OnClick({R.id.call_btn_hangup, R.id.menu_mute_mic, R.id.call_waiting_tips})
     public void onViewClicked(View view) {
         switch (view.getId()) {
-            case R.id.menu_switch:
-                RCRTCEngine.getInstance().getDefaultVideoStream().switchCamera(new CameraVideoCapturer.CameraSwitchHandler() {
-                    @Override
-                    public void onCameraSwitchDone(boolean isFrontCamera) {
-                        if (mWaterFilter != null) {
-                            mWaterFilter.angleChange(isFrontCamera);
-                        }
-
-                    }
-
-                    @Override
-                    public void onCameraSwitchError(String errorDescription) {
-
-                    }
-                });
-                break;
             case R.id.menu_mute_speaker:// 为防止频繁快速点击造成音频卡顿，增加点击间隔限制
                 if (Utils.isFastDoubleClick()) {
                     showToastLengthLong("正在处理中");
@@ -2028,7 +1962,7 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
                 audioManager.onToggleSpeaker(!muteSpeaker);
                 break;
             case R.id.call_btn_hangup:
-                RongRTC.newInstance().discontinueSharing();
+                RongRTC.newInstance().discontinueSharing("");
                 break;
             case R.id.menu_mute_mic:
                 CheckBox checkBoxs = (CheckBox) view;
@@ -2055,5 +1989,4 @@ public class LookActivity extends AppCompatActivity implements OnHeadsetPlugList
             }
         });
     }
-
 }

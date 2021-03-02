@@ -610,9 +610,6 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (UserUtils.IS_AUTO_TEST) { // 自动化测试会有红点
-                        renderViewManager.onTrackadd(userId, tag);
-                    }
                     if (TextUtils.equals(tag, RongRTCScreenCastHelper.VIDEO_TAG)) {
                         screenCastEnable = false;
                         btnScreenCast.setEnabled(false);
@@ -703,14 +700,6 @@ public class MeetingActivity extends RongRTCBaseActivity implements View.OnClick
         @Override
         public void onFirstRemoteVideoFrame(final String userId, final String tag) {
             Log.i(TAG, "onFirstFrameDraw() userId: " + userId + " ,tag = " + tag);
-            postUIThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (UserUtils.IS_AUTO_TEST) {
-                        renderViewManager.onFirstFrameDraw(userId, tag);
-                    }
-                }
-            });
         }
 
         @Override

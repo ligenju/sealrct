@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -79,7 +80,7 @@ public class TestActivity extends AppCompatActivity {
                 if (isShare) {
                     startActivity(new Intent(TestActivity.this, CameraActivity.class));
                 } else {
-                    Intent intent = new Intent(TestActivity.this, LookActivity.class);
+                    Intent intent = new Intent(TestActivity.this, RongYunSeeActivity.class);
                     intent.putExtra("EXTRA_IS_MASTER", isAdmin);
                     startActivity(intent);
 //                    RongRTC.newInstance().startCallActivity(isAdmin);
@@ -118,8 +119,8 @@ public class TestActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onSuccessfullyExitTheRoom() {
-                showToast("退出房间成功");
+            public void onSuccessfullyExitTheRoom(String prompt) {
+                showToast(TextUtils.isEmpty(prompt) ? "退出成功" : prompt);
             }
 
             @Override
@@ -127,16 +128,19 @@ public class TestActivity extends AppCompatActivity {
                 showToast(message);
             }
 
+            @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
-            public void onDestroyed() {
+            public void onDestroyed(String reason) {
                 if (!UserUtils.IS_BENDI) {
                     List<Activity> list = RongRTC.newInstance().getActivityList();
                     for (int i = 0; i < list.size(); i++) {
-                        if (list.get(i) instanceof LookActivity) {
-                            LookActivity activity = (LookActivity) list.get(i);
-                            activity.intendToLeave(true);
+                        if (list.get(i) instanceof RongYunSeeActivity) {
+                            RongYunSeeActivity activity = (RongYunSeeActivity) list.get(i);
+                            activity.intendToLeave(true, "");
                         }
                     }
+                } else {
+                    RongRTC.newInstance().intendToLeave(true, reason);
                 }
             }
         });

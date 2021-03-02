@@ -57,7 +57,7 @@ public interface OnRongYunConnectionMonitoring {
     /**
      * 退出房间成功提示
      */
-    void onSuccessfullyExitTheRoom();
+    void onSuccessfullyExitTheRoom(String prompt);
     /**
      * 收到消息
      */
@@ -66,6 +66,6 @@ public interface OnRongYunConnectionMonitoring {
     /**
      * 销毁共享服务
      */
-    void onDestroyed();
+    void onDestroyed(String reason);
 
 }

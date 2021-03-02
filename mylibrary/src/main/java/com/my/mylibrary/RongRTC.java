@@ -29,7 +29,6 @@ import com.my.mylibrary.message.RoomKickOffMessage;
 import com.my.mylibrary.screen_cast.RongRTCScreenCastHelper;
 import com.my.mylibrary.screen_cast.ScreenCastService;
 import com.my.mylibrary.utils.BluetoothUtil;
-import com.my.mylibrary.utils.CustomizedEncryptionUtil;
 import com.my.mylibrary.utils.HeadsetPlugReceiver;
 import com.my.mylibrary.utils.OnHeadsetPlugListener;
 import com.my.mylibrary.utils.SessionManager;
@@ -159,8 +158,7 @@ public class RongRTC {
                     if (joinRoomWhenReconnected)
                         connectToRoom();
                 } else if (connectionStatus == ConnectionStatus.KICKED_OFFLINE_BY_OTHER_CLIENT) {
-                    intendToLeave(true);
-                    onRongYunConnectionMonitoring.onConnectionRongYunFailed("此用户被其他设备登录");
+                    discontinueSharing("此用户被其他设备登录");
                 }
             }
         });
@@ -238,14 +236,9 @@ public class RongRTC {
         UserUtils.ROOMID = roomId;
         UserUtils.USER_NAME = username;
         HomeWatcherReceiver.registerHomeKeyReceiver(UserUtils.activity);//监听Home键
-        if (isConnected()) {//如果已连接融云并且是一个token 直接加入房间
-            if (UserUtils.TOKEN.equals(token)) {
-                connectToRoom();
-                return;
-            } else {
-//                RongIMClient.getInstance().logout();
-//                RCRTCEngine.getInstance().unInit();
-            }
+        if (isConnected() && UserUtils.TOKEN.equals(token)) {//如果已连接融云并且是一个token 直接加入房间
+            connectToRoom();
+            return;
         }
         UserUtils.TOKEN = token;
         RongIMClient.connect(UserUtils.TOKEN, new RongIMClient.ConnectCallback() {
@@ -305,7 +298,7 @@ public class RongRTC {
      * @param initiative 是否主动退出，false为被踢的情况
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public void intendToLeave(boolean initiative) {
+    public void intendToLeave(boolean initiative, String reason) {
         FinLog.i(TAG, "intendToLeave()-> " + initiative);
         if (initiative) {
             selectAdmin();
@@ -314,11 +307,11 @@ public class RongRTC {
         }
         RCRTCAudioMixer.getInstance().stop();
         // 当前用户是观察者 或 离开房间时还有其他用户存在，直接退出
-        disconnect();
+        disconnect(reason);
     }
 
-    public void discontinueSharing() {
-        onRongYunConnectionMonitoring.onDestroyed();
+    public void discontinueSharing(String reason) {
+        onRongYunConnectionMonitoring.onDestroyed(reason);
     }
 
     /**
@@ -386,7 +379,7 @@ public class RongRTC {
     /**
      * 离开房间
      */
-    private void disconnect() {
+    private void disconnect(String reason) {
         if (room != null) {
             room.deleteRoomAttributes(Collections.singletonList(myUserId), null, null);
         }
@@ -395,14 +388,14 @@ public class RongRTC {
             @Override
             public void onSuccess() {
                 if (UserUtils.IS_BENDI) {
-                    cancelScreenCast(true);
+                    cancelScreenCast();
                 }
                 UserUtils.activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         FinLog.i(TAG, "quitRoom()->onUiSuccess");
                         if (!kicked) {
-                            onRongYunConnectionMonitoring.onSuccessfullyExitTheRoom();
+                            onRongYunConnectionMonitoring.onSuccessfullyExitTheRoom(reason);
                         }
                         if (audioManager != null) {
                             audioManager.close();
@@ -418,11 +411,14 @@ public class RongRTC {
             public void onFailed(RTCErrorCode errorCode) {
                 FinLog.i(TAG, "quitRoom()->onUiFailed : " + errorCode);
                 if (UserUtils.IS_BENDI) {
-                    cancelScreenCast(true);
+                    cancelScreenCast();
                 }
                 UserUtils.activity.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        if (!kicked) {
+                            onRongYunConnectionMonitoring.onSuccessfullyExitTheRoom(reason);
+                        }
                         if (audioManager != null) {
                             audioManager.close();
                             audioManager = null;
@@ -501,54 +497,46 @@ public class RongRTC {
 
     private void initOrUpdateRTCEngine() {
         RCRTCConfig.Builder configBuilder = RCRTCConfig.Builder.create();
-        boolean audioEncryption = false;
-        boolean videoEncryption = false;
-        if (UserUtils.KEY_USE_AV_SETTING) {
-            RCRTCParamsType.VideoBitrateMode videoBitrateMode;
-            if (TextUtils.equals(UserUtils.ENCODER_BIT_RATE_MODE, UserUtils.ENCODE_BIT_RATE_MODE_CQ)) {
-                videoBitrateMode = RCRTCParamsType.VideoBitrateMode.CQ;
-            } else if (TextUtils.equals(UserUtils.ENCODER_BIT_RATE_MODE, UserUtils.ENCODE_BIT_RATE_MODE_VBR)) {
-                videoBitrateMode = RCRTCParamsType.VideoBitrateMode.VBR;
-            } else {
-                videoBitrateMode = RCRTCParamsType.VideoBitrateMode.CBR;
-            }
-            /* 是否启动 AudioRecord */
-            configBuilder.enableMicrophone(true)
-                    /* 是否采用双声道 */
-                    .enableStereo(UserUtils.AUDIO_STEREO_ENABLE)
-                    /* 设置麦克采集来源
-                     * 默认设置的音源在设备上 AudioRecord 采集音频异常场景  必须使用 MediaRecorder.AudioSource 类参数值，默认为 MediaRecorder.AudioSource.VOICE_COMMUNICATION
-                     * */
-                    .setAudioSource(MediaRecorder.AudioSource.DEFAULT)
-                    /* 设置音频码率 */
-                    .setAudioBitrate(UserUtils.AUDIO_TRANSPORT_BIT_RATE)
-                    /* 设置音频采样率 */
-                    .setAudioSampleRate(UserUtils.AUDIO_SAMPLE_RATE)
-                    /* 视频编码配置 */
-                    .enableHardwareEncoder(UserUtils.ENCODER_TYPE_KEY)
-                    //设置硬件编码器颜色
-                    .setHardwareEncoderColor(UserUtils.ENCODER_COLOR_FORMAT_VAL_KEY)
-                    //启用编码器纹理
-                    .enableEncoderTexture(UserUtils.ACQUISITION_MODE_KEY)
-                    //启用硬件编码器高级配置文件
-                    .enableHardwareEncoderHighProfile(UserUtils.ENCODER_LEVEL_KEY)
-                    /* 视频解码配置 */
-                    .enableHardwareDecoder(UserUtils.DECODER_TYPE_KEY)
-                    //设置硬件解码器颜色
-                    .setHardwareDecoderColor(UserUtils.DECODER_COLOR_FORMAT_VAL_KEY)
-                    /* 编码码率控制模式 */
-                    .setHardwareEncoderBitrateMode(videoBitrateMode)
-                    /* 开启自定义音频加解密 */
-                    .enableAudioEncryption(false)
-                    /* 开启自定义视频加解密 */
-                    .enableVideoEncryption(false)
-                    /* 开启SRTP*/
-                    .enableSRTP(false);
-        }
+        RCRTCParamsType.VideoBitrateMode videoBitrateMode;
+//            videoBitrateMode = RCRTCParamsType.VideoBitrateMode.CQ;
+//            videoBitrateMode = RCRTCParamsType.VideoBitrateMode.VBR;
+        videoBitrateMode = RCRTCParamsType.VideoBitrateMode.CBR;
+
+        /* 是否启动 AudioRecord */
+        configBuilder.enableMicrophone(true)
+                /* 是否采用双声道 */
+                .enableStereo(false)
+                /* 设置麦克采集来源
+                 * 默认设置的音源在设备上 AudioRecord 采集音频异常场景  必须使用 MediaRecorder.AudioSource 类参数值，默认为 MediaRecorder.AudioSource.VOICE_COMMUNICATION
+                 * */
+                .setAudioSource(MediaRecorder.AudioSource.DEFAULT)
+                /* 设置音频码率 */
+                .setAudioBitrate(30)
+                /* 设置音频采样率 */
+                .setAudioSampleRate(48000)
+                /* 视频编码配置 */
+                .enableHardwareEncoder(true)
+                //设置硬件编码器颜色
+                .setHardwareEncoderColor(0)
+                //启用编码器纹理
+                .enableEncoderTexture(true)
+                //启用硬件编码器高级配置文件
+                .enableHardwareEncoderHighProfile(false)
+                /* 视频解码配置 */
+                .enableHardwareDecoder(true)
+                //设置硬件解码器颜色
+                .setHardwareDecoderColor(0)
+                /* 编码码率控制模式 */
+                .setHardwareEncoderBitrateMode(videoBitrateMode)
+                /* 开启自定义音频加解密 */
+                .enableAudioEncryption(false)
+                /* 开启自定义视频加解密 */
+                .enableVideoEncryption(false)
+                /* 开启SRTP*/
+                .enableSRTP(false);
         //自定义加解密 so 加载
-        if (audioEncryption || videoEncryption) {
-            CustomizedEncryptionUtil.getInstance().init();
-        }
+//            CustomizedEncryptionUtil.getInstance().init();
+
         FinLog.d(TAG + "", "init --> enter");
         String manufacturer = Build.MANUFACTURER.trim();
         if (manufacturer.contains("HUAWEI") || manufacturer.contains("vivo")) {
@@ -562,50 +550,40 @@ public class RongRTC {
         FinLog.d(TAG + "", "init --> over");
 
         RCRTCAudioStreamConfig.Builder audioConfigBuilder = RCRTCAudioStreamConfig.Builder.create();
-        if (UserUtils.KEY_USE_AV_SETTING) {
-            //AUDIO ECHO取消模式  回声消除使用ACE和AECM两种处理算法。其中ACE的算法复杂度比AECM要高，回声消除的效果回较明显。
-            audioConfigBuilder.setEchoCancel(RCRTCParamsType.AECMode.parseValue(2))//RCRTCParamsType.AECMode.parseValue(UserUtils.AUDIO_ECHO_CANCEL_MODE)
-                    //设置回声扩展滤波器是否可用，默认 false
-                    .enableEchoFilter(true)
-                    //设置噪声抑制算法方案，默认为 NSMode.NS_MODE0 (不采用降噪处理)
-                    .setNoiseSuppression(RCRTCParamsType.NSMode.parseValue(3))//RCRTCParamsType.NSMode.parseValue(UserUtils.AUDIO_NOISE_SUPPRESSION_MODE)
-                    //对音频的噪声处理分为噪声抑制和瞬间尖波抑制两部分。其中噪声抑制可以调整抑制级别（ low、modeerate、high、veryhigh级别逐级增强）
-                    .setNoiseSuppressionLevel(RCRTCParamsType.NSLevel.parseValue(3))//RCRTCParamsType.NSLevel.parseValue(UserUtils.AUDIO_NOISE_SUPPRESSION_LEVEL)
-                    //是否支持高通滤波。， 默认 true
-                    .enableHighPassFilter(UserUtils.AUDIO_NOISE_HIGH_PASS_FILTER)
-                    //设置增益控制开关，默认 true
-                    .enableAGCControl(UserUtils.AUDIO_AGC_CONTROL_ENABLE)
-                    .enableAGCLimiter(UserUtils.AUDIO_AGC_LIMITER_ENABLE)
-                    //设置声音信号量,取值范围（-3 - 31），默认值为 -3 ,设置声音目标数字信号量增益值。数字越大增益越小
-                    .setAGCTargetdbov(UserUtils.AUDIO_AGC_TARGET_DBOV)
-                    //设置声音信号量电平压缩比，取值范围为 (0 - 90)， 默认值 为 9。值越大相对声音增益就越明显。取值范围为(0 - 90)， 默认值 为 9。与 AGCTargetdbov 配合使用
-                    .setAGCCompression(UserUtils.AUDIO_AGC_COMPRESSION)
-                    //采集音频信号放大开关，默认 true
-                    .enablePreAmplifier(UserUtils.AUDIO_PRE_AMPLIFIER_ENABLE)
-                    //设置采集音频信号放大级别， 默认 1.0f
-                    .setPreAmplifierLevel(UserUtils.AUDIO_PRE_AMPLIFIER_LEVEL);
-            RCRTCAudioStreamConfig audioStreamConfig = UserUtils.IS_AUDIO_MUSIC ? audioConfigBuilder.buildMusicMode() : audioConfigBuilder.buildDefaultMode();
-            FinLog.d(TAG + "", "Audio --> enter");
-            RCRTCEngine.getInstance().getDefaultAudioStream().setAudioConfig(audioStreamConfig);
-        }
-
+        //AUDIO ECHO取消模式  回声消除使用ACE和AECM两种处理算法。其中ACE的算法复杂度比AECM要高，回声消除的效果回较明显。
+        audioConfigBuilder.setEchoCancel(RCRTCParamsType.AECMode.parseValue(2))//RCRTCParamsType.AECMode.parseValue(UserUtils.AUDIO_ECHO_CANCEL_MODE)
+                //设置回声扩展滤波器是否可用，默认 false
+                .enableEchoFilter(true)
+                //设置噪声抑制算法方案，默认为 NSMode.NS_MODE0 (不采用降噪处理)
+                .setNoiseSuppression(RCRTCParamsType.NSMode.parseValue(3))//RCRTCParamsType.NSMode.parseValue(UserUtils.AUDIO_NOISE_SUPPRESSION_MODE)
+                //对音频的噪声处理分为噪声抑制和瞬间尖波抑制两部分。其中噪声抑制可以调整抑制级别（ low、modeerate、high、veryhigh级别逐级增强）
+                .setNoiseSuppressionLevel(RCRTCParamsType.NSLevel.parseValue(3))//RCRTCParamsType.NSLevel.parseValue(UserUtils.AUDIO_NOISE_SUPPRESSION_LEVEL)
+                //是否支持高通滤波。， 默认 true
+                .enableHighPassFilter(true)
+                //设置增益控制开关，默认 true
+                .enableAGCControl(true)
+                .enableAGCLimiter(true)
+                //设置声音信号量,取值范围（-3 - 31），默认值为 -3 ,设置声音目标数字信号量增益值。数字越大增益越小
+                .setAGCTargetdbov(-3)
+                //设置声音信号量电平压缩比，取值范围为 (0 - 90)， 默认值 为 9。值越大相对声音增益就越明显。取值范围为(0 - 90)， 默认值 为 9。与 AGCTargetdbov 配合使用
+                .setAGCCompression(90)
+                //采集音频信号放大开关，默认 true
+                .enablePreAmplifier(true)
+                //设置采集音频信号放大级别， 默认 1.0f
+                .setPreAmplifierLevel(1.0f);
+//        RCRTCAudioStreamConfig audioStreamConfig =  audioConfigBuilder.buildMusicMode() ;
+        RCRTCAudioStreamConfig audioStreamConfig = audioConfigBuilder.buildDefaultMode();
+        FinLog.d(TAG + "", "Audio --> enter");
+        RCRTCEngine.getInstance().getDefaultAudioStream().setAudioConfig(audioStreamConfig);
+        //视频流设置
         RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
+
         // 如果开启了镜像翻转 VideoFrame，则应关闭镜像预览功能，否则会造成2次翻转效果
         RCRTCEngine.getInstance().getDefaultVideoStream().setPreviewMirror(!UserUtils.IS_MIRROR);
-        /* 视频分辨率/码率 */
-//        String maxBitRate = sm.getString(SettingActivity.BIT_RATE_MAX, "");
-//        String minBitRate = sm.getString(SettingActivity.BIT_RATE_MIN);
-//        if (!TextUtils.isEmpty(maxBitRate)) {
-//            videoConfigBuilder.setMaxRate(Integer.parseInt(maxBitRate.substring(0, maxBitRate.length() - 4)));
-//        }
-//        if (!TextUtils.isEmpty(minBitRate)) {
-//            videoConfigBuilder.setMinRate(Integer.parseInt(minBitRate.substring(0, minBitRate.length() - 4)));
-//        }
-//        RCRTCEngine.getInstance().getDefaultVideoStream().setPreviewMirror(!UserUtils.IS_MIRROR);
-        videoConfigBuilder.setVideoResolution(selectiveResolution(UserUtils.RESOLUTION)).setVideoFps(selectiveFrame(UserUtils.FPS));
-        RCRTCEngine.getInstance().getDefaultVideoStream().enableTinyStream(UserUtils.IS_STREAM_TINY);
-        RCRTCEngine.getInstance().getDefaultVideoStream().setCameraDisplayOrientation(UserUtils.CAPTURE_CAMERA_DISPLAY_ORIENTATION_KEY);
-        RCRTCEngine.getInstance().getDefaultVideoStream().setFrameOrientation(UserUtils.CAPTURE_FRAME_ORIENTATION_KEY);
+        videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_480_720).setVideoFps(RCRTCParamsType.RCRTCVideoFps.parseVideoFps(15));
+        RCRTCEngine.getInstance().getDefaultVideoStream().enableTinyStream(true);
+        RCRTCEngine.getInstance().getDefaultVideoStream().setCameraDisplayOrientation(0);
+        RCRTCEngine.getInstance().getDefaultVideoStream().setFrameOrientation(-1);
         RCRTCEngine.getInstance().getDefaultVideoStream().setVideoConfig(videoConfigBuilder.build());
     }
 
@@ -1085,7 +1063,7 @@ public class RongRTC {
                         RoomKickOffMessage kickOffMessage = (RoomKickOffMessage) messageContent;
                         if (myUserId.equals(kickOffMessage.getUserId())) {
                             FinLog.i(TAG, "kickOffMessage-intendToLeave");
-                            intendToLeave(false);
+                            intendToLeave(false, "您被踢出会议");
                         }
                     }
                 }
@@ -1227,11 +1205,9 @@ public class RongRTC {
 
     /**
      * 取消屏幕投射
-     *
-     * @param isHangup
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    private void cancelScreenCast(final boolean isHangup) {
+    private void cancelScreenCast() {
         if (screenOutputStream == null || screenCastHelper != null) {
             return;
         }
@@ -1240,28 +1216,12 @@ public class RongRTC {
         localUser.unpublishStream(screenOutputStream, new IRCRTCResultCallback() {
             @Override
             public void onSuccess() {
-                UserUtils.activity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        screenOutputStream = null;
-                        if (isHangup) {
-                            disconnect();
-                        }
-                    }
-                });
+                screenOutputStream = null;
             }
 
             @Override
             public void onFailed(final RTCErrorCode errorCode) {
-                UserUtils.activity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        screenOutputStream = null;
-                        if (isHangup) {
-                            disconnect();
-                        }
-                    }
-                });
+                screenOutputStream = null;
             }
         });
     }

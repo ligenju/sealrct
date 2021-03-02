@@ -145,9 +145,11 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     private Handler handler = new Handler();
     private RongRTCPopupWindow popupWindow;
     private LinearLayout call_reder_container;
-    private AppCompatCheckBox btnSwitchCamera;
     private AppCompatCheckBox btnMuteSpeaker;
     private AppCompatCheckBox btnMuteMic;
+    private ScrollView scrollView;
+    private HorizontalScrollView horizontalScrollView;
+    private RelativeLayout rel_sv; // sv父布局
     private List<ItemModel> mMembers = new ArrayList<>();
     private Map<String, UserInfo> mMembersMap = new HashMap<>();
 
@@ -161,9 +163,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
      */
     private boolean muteSpeaker = false;
 
-    private ScrollView scrollView;
-    private HorizontalScrollView horizontalScrollView;
-    private RelativeLayout rel_sv; // sv父布局
+
     private String myUserId;
     // 管理员uerId,默认第一个加入房间的用户为管理员
     private String adminUserId;
@@ -265,7 +265,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
 
     private void initViews() {
         mcall_more_container = (RelativeLayout) findViewById(R.id.call_more_container);
-        btnSwitchCamera = (AppCompatCheckBox) findViewById(R.id.menu_switch);
         btnMuteSpeaker = (AppCompatCheckBox) findViewById(R.id.menu_mute_speaker);
         call_reder_container = (LinearLayout) findViewById(R.id.call_reder_container);
         buttonHangUp = (Button) findViewById(R.id.call_btn_hangup);
@@ -276,7 +275,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         layoutNetworkStatusInfo = (LinearLayout) findViewById(R.id.layout_network_status_tips);
         txtViewNetworkStatusInfo = (TextView) findViewById(R.id.textView_network_status_tips);
         rel_sv = (RelativeLayout) findViewById(R.id.rel_sv);
-        toggleCameraMicViewStatus();
+//        toggleCameraMicViewStatus();
 
         renderViewManager = new VideoViewManager();
         renderViewManager.setActivity(this);
@@ -287,7 +286,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             }
         });
         buttonHangUp.setOnClickListener(this);
-        btnSwitchCamera.setOnClickListener(this);
         btnMuteMic.setOnClickListener(this);
         btnMuteSpeaker.setOnClickListener(this);
         renderViewManager.setOnLocalVideoViewClickedListener(
@@ -332,24 +330,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
     }
 
     /**
-     * 切换相机麦克风视图状态
-     */
-    private void toggleCameraMicViewStatus() {
-        Log.i(TAG, "toggleCameraMicViewStatus() IS_OBSERVER = " + UserUtils.IS_OBSERVER + " IS_VIDEO_MUTE = " + UserUtils.IS_VIDEO_MUTE);
-        if (UserUtils.IS_OBSERVER) {
-            btnSwitchCamera.setVisibility(View.GONE);
-            btnMuteMic.setVisibility(View.GONE);
-        } else {
-            if (UserUtils.IS_VIDEO_MUTE) {
-                btnSwitchCamera.setEnabled(false);
-            } else {
-                btnSwitchCamera.setEnabled(true);
-                btnSwitchCamera.setVisibility(View.VISIBLE);
-            }
-        }
-    }
-
-    /**
      * 改变屏幕上除了视频通话之外的其他视图可见状态
      */
     private void toggleActionButtons(boolean isHidden) {
@@ -369,7 +349,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
      */
     private void startCall() {
         try {
-            renderViewManager.initViews(this, UserUtils.IS_OBSERVER);
+            renderViewManager.initViews(this, UserUtils. IS_OBSERVER);
             room = RCRTCEngine.getInstance().getRoom();
             RCRTCEngine.getInstance().registerStatusReportListener(statusReportListener);
             room.registerRoomListener(roomEventsListener);
@@ -633,11 +613,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
             postUIThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (UserUtils.IS_AUTO_TEST) { // 自动化测试会有红点
-                        renderViewManager.onTrackadd(userId, tag);
-                    }
-                    if (TextUtils.equals(tag, UserUtils.CUSTOM_FILE_TAG)) {
-                    } else if (TextUtils.equals(tag, RongRTCScreenCastHelper.VIDEO_TAG)) {
+                   if (TextUtils.equals(tag, RongRTCScreenCastHelper.VIDEO_TAG)) {
                         screenCastEnable = false;
                     }
                 }
@@ -724,14 +700,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         @Override
         public void onFirstRemoteVideoFrame(final String userId, final String tag) {
             Log.i(TAG, "onFirstFrameDraw() userId: " + userId + " ,tag = " + tag);
-            postUIThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (UserUtils.IS_AUTO_TEST) {
-                        renderViewManager.onFirstFrameDraw(userId, tag);
-                    }
-                }
-            });
         }
 
         @Override
@@ -766,8 +734,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
                     for (RCRTCInputStream stream : streams) {
                         if (stream.getMediaType().equals(RCRTCMediaType.VIDEO)) {
                             renderViewManager.removeVideoView(false, remoteUser.getUserId(), stream.getTag());
-                            if (TextUtils.equals(stream.getTag(), UserUtils.CUSTOM_FILE_TAG)) {
-                            } else if (TextUtils.equals(stream.getTag(), RongRTCScreenCastHelper.VIDEO_TAG)) {
+                            if (TextUtils.equals(stream.getTag(), RongRTCScreenCastHelper.VIDEO_TAG)) {
                                 screenCastEnable = true;
                             }
                         }
@@ -1860,21 +1827,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
         if (id == R.id.call_btn_hangup) {
             FinLog.i(TAG, "intendToLeave()-> call_btn_hangup");
             intendToLeave(true);
-        } else if (id == R.id.menu_switch) {
-            RCRTCEngine.getInstance().getDefaultVideoStream().switchCamera(new CameraVideoCapturer.CameraSwitchHandler() {
-                @Override
-                public void onCameraSwitchDone(boolean isFrontCamera) {
-                    if (mWaterFilter != null) {
-                        mWaterFilter.angleChange(isFrontCamera);
-                    }
-
-                }
-
-                @Override
-                public void onCameraSwitchError(String errorDescription) {
-
-                }
-            });
         } else if (id == R.id.menu_mute_mic) {
             CheckBox checkBox = (CheckBox) v;
             FinLog.i(TAG, "isMute : " + checkBox.isChecked());

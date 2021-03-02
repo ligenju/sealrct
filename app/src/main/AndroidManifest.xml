@@ -33,7 +33,7 @@
         android:theme="@style/AppTheme"
         tools:replace="android:allowBackup">
         <activity android:name=".CameraActivity"></activity>
-        <activity android:name=".LookActivity"></activity>
+        <activity android:name=".RongYunSeeActivity"></activity>
         <activity android:name=".MeetingActivity" />
         <activity android:name=".TestActivity">
             <intent-filter>
