@@ -882,11 +882,6 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
      * 初始化音频混合
      */
     private void initAudioMixing() {
-        AudioMixFragment.mixing = false;
-        AudioMixFragment.mixMode = AudioMixFragment.MODE_PLAY_MIX;
-        AudioMixFragment.audioPath = AudioMixFragment.DEFAULT_AUDIO_PATH;
-        Arrays.fill(AudioEffectFragment.preloaded, false);
-        AudioEffectFragment.loopCount = 1;
         RCRTCAudioMixer.getInstance().setMixingVolume(100);
         RCRTCAudioMixer.getInstance().setPlaybackVolume(100);
         RCRTCEngine.getInstance().getDefaultAudioStream().adjustRecordingVolume(100);

@@ -77,8 +77,9 @@ public class TestActivity extends AppCompatActivity {
 
             @Override
             public void onConnectedToTheRoomSuccessfully(boolean isShare, boolean isAdmin) {
+//                pauseMusic();
                 if (isShare) {
-                    startActivity(new Intent(TestActivity.this, CameraActivity.class));
+//                    startActivity(new Intent(TestActivity.this, CameraActivity.class));
                 } else {
                     Intent intent = new Intent(TestActivity.this, RongYunSeeActivity.class);
                     intent.putExtra("EXTRA_IS_MASTER", isAdmin);
@@ -93,11 +94,6 @@ public class TestActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onFailedToShareScreen(String err) {
-                showToast(err);
-            }
-
-            @Override
             public void onSuccessfullySubscribed() {
 //                showToast("成功订阅");
                 Log.d(TAG, "成功订阅");
@@ -106,6 +102,15 @@ public class TestActivity extends AppCompatActivity {
             @Override
             public void onFailedSubscription(String err) {
                 showToast(err);
+            }
+
+            @Override
+            public void onLoadSharing(boolean isSuccess, String msg) {
+                if (isSuccess){
+                    startActivity(new Intent(TestActivity.this, CameraActivity.class));
+                }else {
+                    showToast(msg);
+                }
             }
 
             @Override
@@ -207,4 +212,10 @@ public class TestActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    private void pauseMusic() {
+        Intent freshIntent = new Intent();
+        freshIntent.setAction("com.android.music.musicservicecommand.pause");
+        freshIntent.putExtra("command", "pause");
+        sendBroadcast(freshIntent);
+    }
 }

@@ -28,11 +28,6 @@ public interface OnRongYunConnectionMonitoring {
     void onFailedToConnectToRoom(String err);
 
     /**
-     * 共享屏幕失败  ps:发布资源失败
-     */
-    void onFailedToShareScreen(String err);
-
-    /**
      * 成功订阅音视频流
      */
     void onSuccessfullySubscribed();
@@ -41,6 +36,14 @@ public interface OnRongYunConnectionMonitoring {
      * 失败订阅音视频流
      */
     void onFailedSubscription(String err);
+
+    /**
+     * 加载共享服务
+     *
+     * @param isSuccess 是否加载成功
+     * @param msg       失败原因
+     */
+    void onLoadSharing(boolean isSuccess, String msg);
 
     /**
      * 离线用户
@@ -58,6 +61,7 @@ public interface OnRongYunConnectionMonitoring {
      * 退出房间成功提示
      */
     void onSuccessfullyExitTheRoom(String prompt);
+
     /**
      * 收到消息
      */

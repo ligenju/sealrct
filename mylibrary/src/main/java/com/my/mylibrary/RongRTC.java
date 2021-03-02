@@ -511,7 +511,7 @@ public class RongRTC {
                  * */
                 .setAudioSource(MediaRecorder.AudioSource.DEFAULT)
                 /* 设置音频码率 */
-                .setAudioBitrate(30)
+                .setAudioBitrate(40)
                 /* 设置音频采样率 */
                 .setAudioSampleRate(48000)
                 /* 视频编码配置 */
@@ -587,28 +587,6 @@ public class RongRTC {
         RCRTCEngine.getInstance().getDefaultVideoStream().setVideoConfig(videoConfigBuilder.build());
     }
 
-    /**
-     * 构造分辨率对应的BlinkVideoProfile对象
-     *
-     * @param resolutionStr
-     * @return
-     */
-    private RCRTCParamsType.RCRTCVideoResolution selectiveResolution(String resolutionStr) {
-        if (resolutionStr == null || resolutionStr.equals("")) {
-            return RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_480_640;
-        }
-        RCRTCParamsType.RCRTCVideoResolution profile = null;
-        String[] resolutionArray = resolutionStr.split("x");
-        profile = RCRTCParamsType.RCRTCVideoResolution.parseVideoResolution(
-                Integer.parseInt(resolutionArray[0]), Integer.parseInt(resolutionArray[1]));
-        return profile;
-    }
-
-    private RCRTCParamsType.RCRTCVideoFps selectiveFrame(String frameStr) {
-        frameStr = TextUtils.isEmpty(frameStr) ? "15" : frameStr;
-        return RCRTCParamsType.RCRTCVideoFps.parseVideoFps(Integer.parseInt(frameStr));
-    }
-
 
     public void startCallActivity(boolean isAdmin) {
         Intent intent = new Intent(UserUtils.activity, CallActivity.class);
@@ -630,7 +608,6 @@ public class RongRTC {
         if (RCRTCEngine.getInstance().getRoom().getRemoteUsers().size() == 0) {
             adminUserId = myUserId;
         }
-//        initAudioManager();
         startCall();
         room.getRoomAttributes(null, new IRCRTCResultDataCallback<Map<String, String>>() {
             @Override
@@ -648,6 +625,7 @@ public class RongRTC {
 
             }
         });
+        onRongYunConnectionMonitoring.onLoadSharing(true, "成功");
     }
 
     private void onGetRoomAttributesHandler(Map<String, String> data) {
@@ -760,17 +738,13 @@ public class RongRTC {
      */
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void publishResource() {
-        if (UserUtils.IS_OBSERVER) {
-            return;
-        }
         if (localUser == null) {
-            onRongYunConnectionMonitoring.onFailedToShareScreen("不在房间里");
+            onRongYunConnectionMonitoring.onLoadSharing(false, "不在房间里");
             return;
         }
-
         if (RongIMClient.getInstance().getCurrentConnectionStatus() == RongIMClient.ConnectionStatusListener.ConnectionStatus.NETWORK_UNAVAILABLE) {
             String toastMsg = UserUtils.activity.getResources().getString(R.string.Thecurrentnetworkisnotavailable);
-            onRongYunConnectionMonitoring.onFailedToShareScreen(toastMsg);
+            onRongYunConnectionMonitoring.onLoadSharing(false, toastMsg);
             return;
         }
 
@@ -823,7 +797,7 @@ public class RongRTC {
                                         if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
                                             publishResource();
                                         } else {
-                                            onRongYunConnectionMonitoring.onFailedToShareScreen(errorCode.toString());
+                                            onRongYunConnectionMonitoring.onLoadSharing(false, errorCode.toString());
                                         }
                                     }
                                 });
@@ -839,7 +813,7 @@ public class RongRTC {
                     if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
                         publishResource();
                     } else {
-                        onRongYunConnectionMonitoring.onFailedToShareScreen(errorCode.toString());
+                        onRongYunConnectionMonitoring.onLoadSharing(false, errorCode.toString());
                     }
                 }
             });
