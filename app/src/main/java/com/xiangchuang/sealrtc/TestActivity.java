@@ -1,12 +1,14 @@
 package com.xiangchuang.sealrtc;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -39,11 +41,12 @@ public class TestActivity extends AppCompatActivity {
     };
     private int type = 0;
     private static final String TAG = "TestActivity";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_test);
-
+        RongRTC.newInstance().initConnectionStatusListener();
         findViewById(R.id.lin_ok).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
@@ -76,7 +79,10 @@ public class TestActivity extends AppCompatActivity {
                 if (isShare) {
                     startActivity(new Intent(TestActivity.this, CameraActivity.class));
                 } else {
-                    RongRTC.newInstance().startCallActivity(isAdmin);
+                    Intent intent = new Intent(TestActivity.this, LookActivity.class);
+                    intent.putExtra("EXTRA_IS_MASTER", isAdmin);
+                    startActivity(intent);
+//                    RongRTC.newInstance().startCallActivity(isAdmin);
                 }
             }
 
@@ -123,7 +129,15 @@ public class TestActivity extends AppCompatActivity {
 
             @Override
             public void onDestroyed() {
-
+                if (!UserUtils.IS_BENDI) {
+                    List<Activity> list = RongRTC.newInstance().getActivityList();
+                    for (int i = 0; i < list.size(); i++) {
+                        if (list.get(i) instanceof LookActivity) {
+                            LookActivity activity = (LookActivity) list.get(i);
+                            activity.intendToLeave(true);
+                        }
+                    }
+                }
             }
         });
 
@@ -180,7 +194,6 @@ public class TestActivity extends AppCompatActivity {
         if (!RongRTC.newInstance().isBy(requestCode, resultCode)) {
             return;
         }
-        UserUtils.IS_BENDI = true;
         RongRTC.newInstance().start(this, data, "RVHMoPiaLKvZcRsdkrdfAVjcrJI7YoQZsqcINLIIaFE=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", "123456", "播放者");
     }
 

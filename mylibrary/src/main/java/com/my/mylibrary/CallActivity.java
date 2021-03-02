@@ -335,7 +335,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
      * 切换相机麦克风视图状态
      */
     private void toggleCameraMicViewStatus() {
-        Log.i(TAG, "toggleCameraMicViewStatus() IS_OBSERVER = " +UserUtils. IS_OBSERVER + " IS_VIDEO_MUTE = " + UserUtils.IS_VIDEO_MUTE);
+        Log.i(TAG, "toggleCameraMicViewStatus() IS_OBSERVER = " + UserUtils.IS_OBSERVER + " IS_VIDEO_MUTE = " + UserUtils.IS_VIDEO_MUTE);
         if (UserUtils.IS_OBSERVER) {
             btnSwitchCamera.setVisibility(View.GONE);
             btnMuteMic.setVisibility(View.GONE);
@@ -369,7 +369,7 @@ public class CallActivity extends RongRTCBaseActivity implements View.OnClickLis
      */
     private void startCall() {
         try {
-            renderViewManager.initViews(this,UserUtils. IS_OBSERVER);
+            renderViewManager.initViews(this, UserUtils.IS_OBSERVER);
             room = RCRTCEngine.getInstance().getRoom();
             RCRTCEngine.getInstance().registerStatusReportListener(statusReportListener);
             room.registerRoomListener(roomEventsListener);

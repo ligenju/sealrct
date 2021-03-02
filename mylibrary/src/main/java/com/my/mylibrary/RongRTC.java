@@ -40,7 +40,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -66,7 +65,6 @@ import cn.rongcloud.rtc.api.stream.RCRTCVideoOutputStream;
 import cn.rongcloud.rtc.api.stream.RCRTCVideoStreamConfig;
 import cn.rongcloud.rtc.api.stream.RCRTCVideoView;
 import cn.rongcloud.rtc.base.RCRTCAudioFrame;
-import cn.rongcloud.rtc.base.RCRTCMediaType;
 import cn.rongcloud.rtc.base.RCRTCParamsType;
 import cn.rongcloud.rtc.base.RCRTCRoomType;
 import cn.rongcloud.rtc.base.RTCErrorCode;
@@ -113,10 +111,9 @@ public class RongRTC {
 
     public static String TAG = "RongRTC>>>>>>";
     private static RongRTC rongRTC;
-    private ServiceConnection serviceConnection;
+    private ServiceConnection serviceConnection = null;
     // false：开启音视频之前已经连接上耳机
     private boolean HeadsetPlugReceiverState = false;
-
 
     private RongRTC() {
     }
@@ -212,8 +209,13 @@ public class RongRTC {
         return false;
     }
 
+    //添加activity
     public void addActivity(Activity activity) {
         activityList.add(activity);
+    }
+
+    public List<Activity> getActivityList() {
+        return activityList;
     }
 
     /**
@@ -234,13 +236,18 @@ public class RongRTC {
         }
         UserUtils.activity = activity;
         UserUtils.ROOMID = roomId;
-        UserUtils.TOKEN = token;
         UserUtils.USER_NAME = username;
-        if (!TextUtils.isEmpty(UserUtils.TOKEN) && RongIMClient.getInstance().getCurrentConnectionStatus()
-                == RongIMClient.ConnectionStatusListener.ConnectionStatus.CONNECTED) {
-            connectToRoom();
-            return;
+        HomeWatcherReceiver.registerHomeKeyReceiver(UserUtils.activity);//监听Home键
+        if (isConnected()) {//如果已连接融云并且是一个token 直接加入房间
+            if (UserUtils.TOKEN.equals(token)) {
+                connectToRoom();
+                return;
+            } else {
+//                RongIMClient.getInstance().logout();
+//                RCRTCEngine.getInstance().unInit();
+            }
         }
+        UserUtils.TOKEN = token;
         RongIMClient.connect(UserUtils.TOKEN, new RongIMClient.ConnectCallback() {
 
 
@@ -265,6 +272,7 @@ public class RongRTC {
                     onRongYunConnectionMonitoring.onTokenFail();
                 }
                 if (errorCode == RongIMClient.ConnectionErrorCode.RC_CONNECTION_EXIST) {
+//                    connectToRoom();
                     //IM CONNECTED 或者 CONNECTING 都可能报这个错误码，也就是已经主动调用了一次 connect，
                     // 第二次调用时会报 RC_CONNECTION_EXIST，IM SDK 内部会做自动重连
                     joinRoomWhenReconnected = true;
@@ -309,11 +317,21 @@ public class RongRTC {
         disconnect();
     }
 
+    public void discontinueSharing() {
+        onRongYunConnectionMonitoring.onDestroyed();
+    }
+
     /**
      * 销毁实例
      */
     public void onDestroy() {
+        RongIMClient.getInstance().logout();
+        RCRTCEngine.getInstance().unInit();
         HomeWatcherReceiver.unregisterHomeKeyReceiver(UserUtils.activity);
+        if (serviceConnection != null) {
+            UserUtils.activity.unbindService(serviceConnection);
+            serviceConnection = null;
+        }
         HeadsetPlugReceiver.setOnHeadsetPlugListener(null);
         if (headsetPlugReceiver != null) {
             UserUtils.activity.unregisterReceiver(headsetPlugReceiver);
@@ -321,6 +339,7 @@ public class RongRTC {
         }
         if (room != null) {
             room.unregisterRoomListener();
+            room = null;
         }
         RCRTCEngine.getInstance().unregisterStatusReportListener();
         if (audioManager != null) {
@@ -331,9 +350,6 @@ public class RongRTC {
         if (defaultAudioStream != null) {
             defaultAudioStream.setAudioDataListener(null);
         }
-        if (serviceConnection != null) {
-            UserUtils.activity.unbindService(serviceConnection);
-        }
         RCRTCCameraOutputStream defaultVideoStream = RCRTCEngine.getInstance().getDefaultVideoStream();
         if (defaultVideoStream != null) {
             defaultVideoStream.setVideoFrameListener(null);
@@ -343,7 +359,6 @@ public class RongRTC {
                 activityList.get(i).finish();
             }
         }
-        onRongYunConnectionMonitoring.onDestroyed();
     }
 
     /**
@@ -530,12 +545,10 @@ public class RongRTC {
                     /* 开启SRTP*/
                     .enableSRTP(false);
         }
-        RCRTCEngine.getInstance().unInit();
         //自定义加解密 so 加载
         if (audioEncryption || videoEncryption) {
             CustomizedEncryptionUtil.getInstance().init();
         }
-        Log.d(TAG, "initOrUpdateRTCEngine: ");
         FinLog.d(TAG + "", "init --> enter");
         String manufacturer = Build.MANUFACTURER.trim();
         if (manufacturer.contains("HUAWEI") || manufacturer.contains("vivo")) {
@@ -626,7 +639,6 @@ public class RongRTC {
     }
 
     private void initManager() {
-        HomeWatcherReceiver.registerHomeKeyReceiver(UserUtils.activity);
         HeadsetPlugReceiver.setOnHeadsetPlugListener(onHeadsetPlugListener);
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction("android.intent.action.HEADSET_PLUG");

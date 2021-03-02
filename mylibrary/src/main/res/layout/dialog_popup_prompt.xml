@@ -9,8 +9,7 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="@dimen/rtc_dimen_size_24"
-        android:visibility="gone">
+        android:paddingTop="@dimen/rtc_dimen_size_24">
 
         <TextView
             android:id="@+id/popup_dialog_title"
@@ -20,14 +19,15 @@
             android:paddingLeft="@dimen/rtc_dimen_size_19"
             android:singleLine="true"
             android:textColor="#353535"
-            android:textSize="@dimen/rtc_text_size_20" />
+            android:textSize="@dimen/rtc_text_size_20"
+            android:visibility="gone" />
     </RelativeLayout>
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingBottom="@dimen/rtc_dimen_size_21"
-        android:paddingTop="@dimen/rtc_dimen_size_24">
+        android:paddingTop="@dimen/rtc_dimen_size_24"
+        android:paddingBottom="@dimen/rtc_dimen_size_21">
 
         <TextView
             android:id="@+id/popup_dialog_message"

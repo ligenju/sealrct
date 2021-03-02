@@ -64,7 +64,7 @@ public interface OnRongYunConnectionMonitoring {
     void onReceiveMessage(String message);
 
     /**
-     * 销毁完成
+     * 销毁共享服务
      */
     void onDestroyed();
 

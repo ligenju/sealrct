@@ -40,17 +40,17 @@ public class HomeWatcherReceiver extends BroadcastReceiver {
             if (SYSTEM_DIALOG_REASON_HOME_KEY.equals(reason)) { // 短按Home键
                 //可以在这里实现关闭程序操作。。。
                 Log.i(LOG_TAG, "homekey");
-                RongRTC.newInstance().intendToLeave(true);
+                RongRTC.newInstance().discontinueSharing();
             } else if (SYSTEM_DIALOG_REASON_RECENT_APPS.equals(reason)) {//Home键旁边的显示最近的程序的按钮
                 // 长按Home键 或者 activity切换键
                 Log.i(LOG_TAG, "long press home key or activity switch");
-                RongRTC.newInstance().intendToLeave(true);
+                RongRTC.newInstance().discontinueSharing();
             } else if (SYSTEM_DIALOG_REASON_LOCK.equals(reason)) {  // 锁屏，似乎是没有反应，监听Intent.ACTION_SCREEN_OFF这个Action才有用
                 Log.i(LOG_TAG, "lock");
-                RongRTC.newInstance().intendToLeave(true);
+                RongRTC.newInstance().discontinueSharing();
             } else if (SYSTEM_DIALOG_REASON_ASSIST.equals(reason)) {   // samsung 长按Home键
                 Log.i(LOG_TAG, "assist");
-                RongRTC.newInstance().intendToLeave(true);
+                RongRTC.newInstance().discontinueSharing();
             }
 
         }
@@ -71,6 +71,7 @@ public class HomeWatcherReceiver extends BroadcastReceiver {
         Log.i(LOG_TAG, "unregisterHomeKeyReceiver");
         if (mHomeKeyReceiver != null) {
             context.unregisterReceiver(mHomeKeyReceiver);
+            mHomeKeyReceiver = null;
         }
     }
 }
