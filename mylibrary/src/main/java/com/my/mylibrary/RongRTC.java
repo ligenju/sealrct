@@ -625,7 +625,16 @@ public class RongRTC {
 
             }
         });
-        onRongYunConnectionMonitoring.onLoadSharing(true, "成功");
+        loadSharing(true, "成功");
+    }
+
+    private boolean isOne = true;
+
+    private void loadSharing(boolean isRefresh, String msg) {
+        if (isOne) {//只响应一次
+            isOne = false;
+            onRongYunConnectionMonitoring.onLoadSharing(isRefresh, msg);
+        }
     }
 
     private void onGetRoomAttributesHandler(Map<String, String> data) {
@@ -739,12 +748,12 @@ public class RongRTC {
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void publishResource() {
         if (localUser == null) {
-            onRongYunConnectionMonitoring.onLoadSharing(false, "不在房间里");
+            loadSharing(false, "不在房间里");
             return;
         }
         if (RongIMClient.getInstance().getCurrentConnectionStatus() == RongIMClient.ConnectionStatusListener.ConnectionStatus.NETWORK_UNAVAILABLE) {
             String toastMsg = UserUtils.activity.getResources().getString(R.string.Thecurrentnetworkisnotavailable);
-            onRongYunConnectionMonitoring.onLoadSharing(false, toastMsg);
+            loadSharing(false, toastMsg);
             return;
         }
 
@@ -797,7 +806,7 @@ public class RongRTC {
                                         if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
                                             publishResource();
                                         } else {
-                                            onRongYunConnectionMonitoring.onLoadSharing(false, errorCode.toString());
+                                            loadSharing(false, errorCode.toString());
                                         }
                                     }
                                 });
@@ -813,7 +822,7 @@ public class RongRTC {
                     if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
                         publishResource();
                     } else {
-                        onRongYunConnectionMonitoring.onLoadSharing(false, errorCode.toString());
+                        loadSharing(false, errorCode.toString());
                     }
                 }
             });

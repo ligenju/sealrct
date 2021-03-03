@@ -38,7 +38,7 @@ public interface OnRongYunConnectionMonitoring {
     void onFailedSubscription(String err);
 
     /**
-     * 加载共享服务
+     * 加载共享服务 只响应一次
      *
      * @param isSuccess 是否加载成功
      * @param msg       失败原因
