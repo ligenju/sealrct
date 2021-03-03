@@ -356,7 +356,6 @@ public class RongYunSeeActivity extends AppCompatActivity implements OnHeadsetPl
             room.registerRoomListener(roomEventsListener);
             localUser = room.getLocalUser();
             renderViewManager.setRongRTCRoom(room);
-            RCRTCEngine.getInstance().getDefaultVideoStream().setVideoFrameListener(videoOutputFrameListener);
             RCRTCEngine.getInstance().getDefaultAudioStream().setAudioDataListener(audioDataListener);
             RCRTCEngine.getInstance().getDefaultAudioStream().setMicrophoneDisable(muteMicrophone);
             publishResource(); // 发布资源
@@ -400,7 +399,6 @@ public class RongYunSeeActivity extends AppCompatActivity implements OnHeadsetPl
 
         final List<RCRTCOutputStream> localAvStreams = new ArrayList<>();
         localAvStreams.add(RCRTCEngine.getInstance().getDefaultAudioStream());
-        if (!UserUtils.IS_LIVE) {
             localUser.publishStreams(localAvStreams, new IRCRTCResultCallback() {
                 @Override
                 public void onSuccess() {
@@ -416,14 +414,6 @@ public class RongYunSeeActivity extends AppCompatActivity implements OnHeadsetPl
                     }
                 }
             });
-            return;
-        }
-        if (UserUtils.IS_VIDEO_MUTE) {
-            localUser.publishLiveStream(RCRTCEngine.getInstance().getDefaultAudioStream(), createLiveCallback());
-        } else {
-            localUser.publishDefaultLiveStreams(createLiveCallback());
-        }
-
     }
 
     /**
@@ -487,22 +477,7 @@ public class RongYunSeeActivity extends AppCompatActivity implements OnHeadsetPl
             return rtcAudioFrame.getBytes();
         }
     };
-    /**
-     * 视频输出帧监听器
-     */
-    private IRCRTCVideoOutputFrameListener videoOutputFrameListener = new IRCRTCVideoOutputFrameListener() {
-        @Override
-        public RCRTCVideoFrame processVideoFrame(RCRTCVideoFrame videoFrame) {
-            boolean isTexture = videoFrame.getCaptureType() == RCRTCVideoFrame.CaptureType.TEXTURE;
-            // TODO 水印目前仅支持 Texture 类型
-            if (UserUtils.IS_WATER && isTexture) {
-                videoFrame.setTextureId(
-                        onDrawWater(videoFrame.getWidth(), videoFrame.getHeight(), videoFrame.getTextureId()));
-            }
-            onMirrorVideoFrame(videoFrame);
-            return videoFrame;
-        }
-    };
+
     /**
      * 房间事件监听器
      */
@@ -1265,8 +1240,7 @@ public class RongYunSeeActivity extends AppCompatActivity implements OnHeadsetPl
                 public void onFailed(RTCErrorCode errorCode) {
                     FinLog.d(TAG, "subscribeAll subscribeStreams userId = " + remoteUser.getUserId() + ", errorCode =" + errorCode.getValue());
                     // 50010 网络请求超时错误时，重试一次订阅操作
-                    if (RTCErrorCode.RongRTCCodeHttpTimeoutError.equals(errorCode) && remoteUser.getStreams() != null &&
-                            remoteUser.getStreams().size() > 0) {
+                    if (RTCErrorCode.RongRTCCodeHttpTimeoutError.equals(errorCode) && remoteUser.getStreams() != null && remoteUser.getStreams().size() > 0) {
                         localUser.subscribeStreams(remoteUser.getStreams(), null);
                     }
                 }
@@ -1315,11 +1289,6 @@ public class RongYunSeeActivity extends AppCompatActivity implements OnHeadsetPl
                 renderViewManager.setVideoView(false, remoteUser.getUserId(),
                         videoStream.getTag(), remoteUser.getUserId(), remoteView, talkType);
                 videoStream.setVideoView(remoteView);
-            } else if (videoStream == null && UserUtils.IS_BENDI) {     //audio 占位
-                Log.d(TAG, "startCall: connectedUsers==3");
-                renderViewManager.userJoin(remoteUser.getUserId(), RCRTCStream.RONG_TAG, userName, talkType);
-                RCRTCVideoView remoteView = new RCRTCVideoView(this);
-                renderViewManager.setVideoView(false, remoteUser.getUserId(), RCRTCStream.RONG_TAG, remoteUser.getUserId(), remoteView, talkType);
             }
         }
     }
@@ -1637,28 +1606,6 @@ public class RongYunSeeActivity extends AppCompatActivity implements OnHeadsetPl
         }
     }
 
-    /**
-     * 镜像翻转采集的视频数据
-     *
-     * @param rtcVideoFrame
-     */
-    private void onMirrorVideoFrame(RCRTCVideoFrame rtcVideoFrame) {
-        boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
-        if (!UserUtils.IS_MIRROR || mMirrorHelper == null || !isFrontCamera) {
-            return;
-        }
-        long start = System.nanoTime();
-        if (rtcVideoFrame.getCaptureType() == RCRTCVideoFrame.CaptureType.TEXTURE) {
-            int newTextureId = mMirrorHelper.onMirrorImage(
-                    rtcVideoFrame.getTextureId(), rtcVideoFrame.getWidth(), rtcVideoFrame.getHeight());
-            rtcVideoFrame.setTextureId(newTextureId);
-        } else {
-            byte[] frameBytes = mMirrorHelper.onMirrorImage(
-                    rtcVideoFrame.getData(), rtcVideoFrame.getWidth(), rtcVideoFrame.getHeight());
-            rtcVideoFrame.setData(frameBytes);
-        }
-        Log.d(TAG, "onMirrorVideoFrame: " + (System.nanoTime() - start) * 1.0 / 1000000);
-    }
 
     /**
      * 通知SCO音频状态更改
@@ -1761,24 +1708,6 @@ public class RongYunSeeActivity extends AppCompatActivity implements OnHeadsetPl
             boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
             mWaterFilter.angleChange(isFrontCamera);
         }
-    }
-
-    /**
-     * 添加水印
-     *
-     * @param width
-     * @param height
-     * @param textureID
-     * @return
-     */
-    private int onDrawWater(int width, int height, int textureID) {
-        boolean isFrontCamera = RCRTCEngine.getInstance().getDefaultVideoStream().isFrontCamera();
-        if (mWaterFilter == null) {
-            Bitmap logoBitmap = TextureHelper.loadBitmap(this, R.drawable.logo);
-            mWaterFilter = new WaterMarkFilter(this, isFrontCamera, logoBitmap);
-        }
-        mWaterFilter.drawFrame(width, height, textureID, isFrontCamera);
-        return mWaterFilter.getTextureID();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)

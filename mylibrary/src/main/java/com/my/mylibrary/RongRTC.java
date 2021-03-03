@@ -12,7 +12,6 @@ import android.media.AudioManager;
 import android.media.MediaRecorder;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
-import android.os.Handler;
 import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.Log;
@@ -56,7 +55,6 @@ import cn.rongcloud.rtc.api.callback.IRCRTCResultCallback;
 import cn.rongcloud.rtc.api.callback.IRCRTCResultDataCallback;
 import cn.rongcloud.rtc.api.callback.IRCRTCRoomEventsListener;
 import cn.rongcloud.rtc.api.stream.RCRTCAudioStreamConfig;
-import cn.rongcloud.rtc.api.stream.RCRTCCameraOutputStream;
 import cn.rongcloud.rtc.api.stream.RCRTCInputStream;
 import cn.rongcloud.rtc.api.stream.RCRTCMicOutputStream;
 import cn.rongcloud.rtc.api.stream.RCRTCOutputStream;
@@ -104,8 +102,6 @@ public class RongRTC {
     //监听耳机
     private HeadsetPlugReceiver headsetPlugReceiver = null;
     public Intent data;
-    //重新连接时加入会议室
-    private boolean joinRoomWhenReconnected = false;
     public int MEDIA_PROJECTION_SERVICE_CODE = 101;
 
     public static String TAG = "RongRTC>>>>>>";
@@ -151,13 +147,7 @@ public class RongRTC {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
             public void onChanged(ConnectionStatus connectionStatus) {
-                // 点击"开始会议"按钮时，IM为非CONNECTED时会主动connect，如果还是失败，自动化测试case失败
-                // 监听IM连接状态，做1次自动加入房间的尝试，开发者可以忽略此修改
-                if (ConnectionStatus.CONNECTED.equals(connectionStatus)) {
-                    FinLog.d(TAG, "RongLog IM connected, Join Room");
-                    if (joinRoomWhenReconnected)
-                        connectToRoom();
-                } else if (connectionStatus == ConnectionStatus.KICKED_OFFLINE_BY_OTHER_CLIENT) {
+                if (connectionStatus == ConnectionStatus.KICKED_OFFLINE_BY_OTHER_CLIENT) {
                     discontinueSharing("此用户被其他设备登录");
                 }
             }
@@ -232,6 +222,7 @@ public class RongRTC {
         } else {
             UserUtils.IS_BENDI = false;
         }
+        initConnectionStatusListener();
         UserUtils.activity = activity;
         UserUtils.ROOMID = roomId;
         UserUtils.USER_NAME = username;
@@ -263,25 +254,8 @@ public class RongRTC {
                 if (errorCode.equals(RongIMClient.ConnectionErrorCode.RC_CONN_TOKEN_INCORRECT)) {
                     //从 APP 服务获取新 token，并重连
                     onRongYunConnectionMonitoring.onTokenFail();
-                }
-                if (errorCode == RongIMClient.ConnectionErrorCode.RC_CONNECTION_EXIST) {
-//                    connectToRoom();
-                    //IM CONNECTED 或者 CONNECTING 都可能报这个错误码，也就是已经主动调用了一次 connect，
-                    // 第二次调用时会报 RC_CONNECTION_EXIST，IM SDK 内部会做自动重连
-                    joinRoomWhenReconnected = true;
-                    Handler handler = new Handler();
-                    //IM 可能长时间连接不成功，增加一个计时器，2s 不成功，取消IM连接成功时的加入房间逻辑
-                    //原因:用户在当前页面，若突然自动加入房间，对用户不友好
-                    handler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (joinRoomWhenReconnected && RongIMClient.getInstance().getCurrentConnectionStatus()
-                                    != RongIMClient.ConnectionStatusListener.ConnectionStatus.CONNECTED) {
-                                onRongYunConnectionMonitoring.onConnectionRongYunFailed("IM还未建立连接");
-                            }
-                            joinRoomWhenReconnected = false;
-                        }
-                    }, 2000);
+                } else if (errorCode == RongIMClient.ConnectionErrorCode.RC_CONNECTION_EXIST) {
+                    connectToRoom();
                 }
             }
 
@@ -318,6 +292,7 @@ public class RongRTC {
      * 销毁实例
      */
     public void onDestroy() {
+        RongIMClient.getInstance().disconnect();
         RongIMClient.getInstance().logout();
         RCRTCEngine.getInstance().unInit();
         HomeWatcherReceiver.unregisterHomeKeyReceiver(UserUtils.activity);
@@ -343,14 +318,18 @@ public class RongRTC {
         if (defaultAudioStream != null) {
             defaultAudioStream.setAudioDataListener(null);
         }
-        RCRTCCameraOutputStream defaultVideoStream = RCRTCEngine.getInstance().getDefaultVideoStream();
-        if (defaultVideoStream != null) {
-            defaultVideoStream.setVideoFrameListener(null);
-        }
         if (activityList != null && activityList.size() > 0) {
             for (int i = 0; i < activityList.size(); i++) {
                 activityList.get(i).finish();
             }
+        }
+        empty();
+    }
+
+    public void empty() {
+        if (rongRTC != null) {
+            System.gc();
+            rongRTC = null;
         }
     }
 
@@ -436,16 +415,14 @@ public class RongRTC {
     private void connectToRoom() {
         if (isConnected()) {
             initOrUpdateRTCEngine();
-            RCRTCRoomType roomType;
-            if (UserUtils.IS_LIVE) {
-                roomType = UserUtils.IS_VIDEO_MUTE ? RCRTCRoomType.LIVE_AUDIO : RCRTCRoomType.LIVE_AUDIO_VIDEO;
-            } else {//会议
-                roomType = RCRTCRoomType.MEETING;
-            }
+            RCRTCRoomType roomType = RCRTCRoomType.MEETING;
             //加入房间
             RCRTCEngine.getInstance().joinRoom(UserUtils.ROOMID, roomType, new IRCRTCResultDataCallback<RCRTCRoom>() {
                 @Override
                 public void onSuccess(RCRTCRoom room) {
+                    if (!UserUtils.IS_BENDI && room.getRemoteUsers().size() >= 5) {//设置如果超过5人不能发布音视频
+                        UserUtils.IS_OBSERVER = true;
+                    }
                     RCRTCRoom rooms = RCRTCEngine.getInstance().getRoom();
                     int joinMode = RoomInfoMessage.JoinMode.AUDIO_VIDEO;
                     String userId = rooms.getLocalUser().getUserId();
@@ -473,6 +450,7 @@ public class RongRTC {
 
                         }
                     });
+                    //设置跟随系统音量
                     AudioManager am = (AudioManager) UserUtils.activity.getSystemService(Context.AUDIO_SERVICE);
                     if (am != null) {
                         if (am.getMode() != AudioManager.MODE_IN_COMMUNICATION) {
@@ -585,7 +563,7 @@ public class RongRTC {
         RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
 
         // 如果开启了镜像翻转 VideoFrame，则应关闭镜像预览功能，否则会造成2次翻转效果
-        RCRTCEngine.getInstance().getDefaultVideoStream().setPreviewMirror(!UserUtils.IS_MIRROR);
+        RCRTCEngine.getInstance().getDefaultVideoStream().setPreviewMirror(true);
         videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_480_720).setVideoFps(RCRTCParamsType.RCRTCVideoFps.parseVideoFps(15));
         RCRTCEngine.getInstance().getDefaultVideoStream().enableTinyStream(true);
         RCRTCEngine.getInstance().getDefaultVideoStream().setCameraDisplayOrientation(0);
@@ -596,7 +574,7 @@ public class RongRTC {
 
     public void startCallActivity(boolean isAdmin) {
         Intent intent = new Intent(UserUtils.activity, CallActivity.class);
-        intent.putExtra(CallActivity.EXTRA_IS_MASTER, isAdmin);
+        intent.putExtra("EXTRA_IS_MASTER", isAdmin);
         UserUtils.activity.startActivity(intent);
     }
 
@@ -610,6 +588,7 @@ public class RongRTC {
         intentFilter.addAction(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED);
         headsetPlugReceiver = new HeadsetPlugReceiver(BluetoothUtil.hasBluetoothA2dpConnected());
         UserUtils.activity.registerReceiver(headsetPlugReceiver, intentFilter);
+        initAudioManager();
         myUserId = RongIMClient.getInstance().getCurrentUserId();
         if (RCRTCEngine.getInstance().getRoom().getRemoteUsers().size() == 0) {
             adminUserId = myUserId;
@@ -682,24 +661,26 @@ public class RongRTC {
     }
 
     private void initAudioManager() {
-        UserUtils.activity.setVolumeControlStream(AudioManager.STREAM_MUSIC);
-        // Create and audio manager that will take care of audio routing,
-        // audio modes, audio device enumeration etc.
-        audioManager =
-                AppRTCAudioManager.create(
-                        UserUtils.activity.getApplicationContext(),
-                        new Runnable() {
-                            // This method will be called each time the audio state (number and
-                            // type of devices) has been changed.
-                            @Override
-                            public void run() {
+        UserUtils.activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                UserUtils.activity.setVolumeControlStream(AudioManager.STREAM_MUSIC);
+                // Create and audio manager that will take care of audio routing,
+                // audio modes, audio device enumeration etc.
+                audioManager = AppRTCAudioManager.create(UserUtils.activity.getApplicationContext(), new Runnable() {
+                    // This method will be called each time the audio state (number and
+                    // type of devices) has been changed.
+                    @Override
+                    public void run() {
 //                                onAudioManagerChangedState();
-                            }
-                        });
-        // Store existing audio settings and change audio mode to
-        // MODE_IN_COMMUNICATION for best possible VoIP performance.
-        Log.d(TAG, "Initializing the audio manager...");
-        audioManager.init();
+                    }
+                });
+                // Store existing audio settings and change audio mode to
+                // MODE_IN_COMMUNICATION for best possible VoIP performance.
+                Log.d(TAG, "Initializing the audio manager...");
+                audioManager.init();
+            }
+        });
     }
 
 
@@ -765,74 +746,73 @@ public class RongRTC {
 
         final List<RCRTCOutputStream> localAvStreams = new ArrayList<>();
         localAvStreams.add(RCRTCEngine.getInstance().getDefaultAudioStream());
-        if (!UserUtils.IS_LIVE) {//   先发布本地流 音频   再发布共享屏幕视频流
-            localUser.publishStreams(localAvStreams, new IRCRTCResultCallback() {
-                @Override
-                public void onSuccess() {
-                    if (UserUtils.IS_BENDI) {
-                        RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
-                        videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_720_1280);
-                        videoConfigBuilder.setVideoFps(RCRTCParamsType.RCRTCVideoFps.Fps_10);
-                        screenOutputStream = RCRTCEngine.getInstance()
-                                .createVideoStream(RongRTCScreenCastHelper.VIDEO_TAG, videoConfigBuilder.build());
-                        RCRTCVideoView videoView = new RCRTCVideoView(UserUtils.activity);
-                        screenOutputStream.setVideoView(videoView);
-                        screenCastHelper = new RongRTCScreenCastHelper();
-                        if (Build.VERSION.SDK_INT > 28) { // 如果 SDK 版本大于28，需要启动一个前台service来录屏
-                            Intent service = new Intent(UserUtils.activity, ScreenCastService.class);
-                            serviceConnection = new ServiceConnection() {
-                                @Override
-                                public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                                    screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, data, 720, 1280);
-                                    screenCastHelper.start();
-                                }
+        //   先发布本地流 音频   再发布共享屏幕视频流
+        localUser.publishStreams(localAvStreams, new IRCRTCResultCallback() {
+            @Override
+            public void onSuccess() {
+                if (UserUtils.IS_BENDI) {
+                    RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
+                    videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_720_1280);
+                    videoConfigBuilder.setVideoFps(RCRTCParamsType.RCRTCVideoFps.Fps_10);
+                    screenOutputStream = RCRTCEngine.getInstance()
+                            .createVideoStream(RongRTCScreenCastHelper.VIDEO_TAG, videoConfigBuilder.build());
+                    RCRTCVideoView videoView = new RCRTCVideoView(UserUtils.activity);
+                    screenOutputStream.setVideoView(videoView);
+                    screenCastHelper = new RongRTCScreenCastHelper();
+                    if (Build.VERSION.SDK_INT > 28) { // 如果 SDK 版本大于28，需要启动一个前台service来录屏
+                        Intent service = new Intent(UserUtils.activity, ScreenCastService.class);
+                        serviceConnection = new ServiceConnection() {
+                            @Override
+                            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+                                screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, data, 720, 1280);
+                                screenCastHelper.start();
+                            }
 
-                                @Override
-                                public void onServiceDisconnected(ComponentName componentName) {
+                            @Override
+                            public void onServiceDisconnected(ComponentName componentName) {
 
-                                }
-                            };
-                            UserUtils.activity.bindService(service, serviceConnection, BIND_AUTO_CREATE);
-                        } else {
-                            screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, data, 720, 1280);
-                            screenCastHelper.start();
+                            }
+                        };
+                        UserUtils.activity.bindService(service, serviceConnection, BIND_AUTO_CREATE);
+                    } else {
+                        screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, data, 720, 1280);
+                        screenCastHelper.start();
+                    }
+
+                    localUser.publishStream(screenOutputStream, new IRCRTCResultCallback() {
+                        @Override
+                        public void onSuccess() {
+
                         }
 
-                        localUser.publishStream(screenOutputStream, new IRCRTCResultCallback() {
-                            @Override
-                            public void onSuccess() {
-
-                            }
-
-                            @Override
-                            public void onFailed(RTCErrorCode errorCode) {
-                                UserUtils.activity.runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
-                                            publishResource();
-                                        } else {
-                                            loadSharing(false, errorCode.toString());
-                                        }
+                        @Override
+                        public void onFailed(RTCErrorCode errorCode) {
+                            UserUtils.activity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
+                                        publishResource();
+                                    } else {
+                                        loadSharing(false, errorCode.toString());
                                     }
-                                });
-                            }
-                        });
-                    }
+                                }
+                            });
+                        }
+                    });
                 }
+            }
 
-                @Override
-                public void onFailed(RTCErrorCode errorCode) {
-                    FinLog.e(TAG, "publish publish Failed()");
-                    // 50010 网络请求超时错误时，重试一次资源发布操作
-                    if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
-                        publishResource();
-                    } else {
-                        loadSharing(false, errorCode.toString());
-                    }
+            @Override
+            public void onFailed(RTCErrorCode errorCode) {
+                FinLog.e(TAG, "publish publish Failed()");
+                // 50010 网络请求超时错误时，重试一次资源发布操作
+                if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
+                    publishResource();
+                } else {
+                    loadSharing(false, errorCode.toString());
                 }
-            });
-        }
+            }
+        });
     }
 
     /**
@@ -1072,9 +1052,6 @@ public class RongRTC {
         @Override
         public void onRemoteUserMuteVideo(final RCRTCRemoteUser remoteUser, final RCRTCInputStream stream, final boolean mute) {
             FinLog.d(TAG, "onRemoteUserVideoStreamEnabled remoteUser: " + remoteUser + "  , enable :" + mute);
-            if (remoteUser == null || stream == null) {
-                return;
-            }
         }
 
         @Override

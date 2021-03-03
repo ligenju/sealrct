@@ -107,7 +107,7 @@ public class TestActivity extends AppCompatActivity {
             @Override
             public void onLoadSharing(boolean isSuccess, String msg) {
                 if (isSuccess){
-                    startActivity(new Intent(TestActivity.this, CameraActivity.class));
+//                    startActivity(new Intent(TestActivity.this, CameraActivity.class));
                 }else {
                     showToast(msg);
                 }
