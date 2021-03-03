@@ -473,6 +473,12 @@ public class RongRTC {
 
                         }
                     });
+                    AudioManager am = (AudioManager) UserUtils.activity.getSystemService(Context.AUDIO_SERVICE);
+                    if (am != null) {
+                        if (am.getMode() != AudioManager.MODE_IN_COMMUNICATION) {
+                            am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                        }
+                    }
                     if (UserUtils.IS_BENDI)
                         initManager();
                     onRongYunConnectionMonitoring.onConnectedToTheRoomSuccessfully(UserUtils.IS_BENDI, isAdmin);
