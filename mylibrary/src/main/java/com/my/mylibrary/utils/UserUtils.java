@@ -14,8 +14,10 @@ public class UserUtils {
     //token 连接融云
     public static String TOKEN = "";
     //房间ID=123456  建立房间
-    public static String ROOMID = "";
+    public static String ROOMID = "123456";
+
     public static String USER_NAME = "";
+
     public static Activity activity;
     // 当前房间大于30人时，只能以观察者身份加入房间，不能发布音视频流，app层产品逻辑
     public static boolean IS_OBSERVER = false;

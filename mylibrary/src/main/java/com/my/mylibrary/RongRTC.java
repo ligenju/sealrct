@@ -86,7 +86,7 @@ public class RongRTC {
     private RongRTCScreenCastHelper screenCastHelper;
     //共享屏幕的流
     private RCRTCVideoOutputStream screenOutputStream;
-    private OnRongYunConnectionMonitoring onRongYunConnectionMonitoring;
+    private static OnRongYunConnectionMonitoring onRongYunConnectionMonitoring;
     private List<ItemModel> mMembers = new ArrayList<>();
     private List<Activity> activityList = new ArrayList<>();
     private Map<String, UserInfo> mMembersMap = new HashMap<>();
@@ -157,8 +157,8 @@ public class RongRTC {
     /**
      * 融云连接监听
      */
-    public void setOnRongYunConnectionMonitoring(OnRongYunConnectionMonitoring onRongYunConnectionMonitoring) {
-        this.onRongYunConnectionMonitoring = onRongYunConnectionMonitoring;
+    public static void setOnRongYunConnectionMonitoring(OnRongYunConnectionMonitoring onRongYunConnectionMonitorings) {
+        onRongYunConnectionMonitoring = onRongYunConnectionMonitorings;
     }
 
     /**
@@ -226,7 +226,6 @@ public class RongRTC {
         UserUtils.activity = activity;
         UserUtils.ROOMID = roomId;
         UserUtils.USER_NAME = username;
-        HomeWatcherReceiver.registerHomeKeyReceiver(UserUtils.activity);//监听Home键
         if (isConnected() && UserUtils.TOKEN.equals(token)) {//如果已连接融云并且是一个token 直接加入房间
             connectToRoom();
             return;
@@ -284,14 +283,80 @@ public class RongRTC {
         disconnect(reason);
     }
 
+    /**
+     * 停止分享
+     *
+     * @param reason
+     */
     public void discontinueSharing(String reason) {
         onRongYunConnectionMonitoring.onDestroyed(reason);
+    }
+
+    /**
+     * 发布共享视频
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void postSharedVideo(Intent datas) {
+        Log.d(TAG, "postSharedVideo: 发布共享视频》》");
+        RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
+        videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_720_1280);
+        videoConfigBuilder.setVideoFps(RCRTCParamsType.RCRTCVideoFps.Fps_10);
+        screenOutputStream = RCRTCEngine.getInstance()
+                .createVideoStream(RongRTCScreenCastHelper.VIDEO_TAG, videoConfigBuilder.build());
+        RCRTCVideoView videoView = new RCRTCVideoView(UserUtils.activity);
+        screenOutputStream.setVideoView(videoView);
+        screenCastHelper = new RongRTCScreenCastHelper();
+        Log.d(TAG, "postSharedVideo: 发布共享视频服务开始》》");
+        if (Build.VERSION.SDK_INT > 28) { // 如果 SDK 版本大于28，需要启动一个前台service来录屏
+            Intent service = new Intent(UserUtils.activity, ScreenCastService.class);
+            serviceConnection = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+                    screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, datas, 720, 1280);
+                    screenCastHelper.start();
+                    Log.d(TAG, "postSharedVideo: 共享视频服务成功》》30");
+                }
+
+                @Override
+                public void onServiceDisconnected(ComponentName componentName) {
+
+                }
+            };
+            UserUtils.activity.bindService(service, serviceConnection, BIND_AUTO_CREATE);
+        } else {
+            screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, datas, 720, 1280);
+            screenCastHelper.start();
+            Log.d(TAG, "postSharedVideo: 共享视频服务成功》》28");
+        }
+        Log.d(TAG, "postSharedVideo: 发布共享视频流开始》》");
+        localUser.publishStream(screenOutputStream, new IRCRTCResultCallback() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "postSharedVideo: 发布共享视频流成功》》");
+            }
+
+            @Override
+            public void onFailed(RTCErrorCode errorCode) {
+                Log.d(TAG, "postSharedVideo: 发布共享视频流失败》》" + errorCode);
+                UserUtils.activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
+                            postSharedVideo(datas);
+                        } else {
+                            loadSharing(false, errorCode.toString());
+                        }
+                    }
+                });
+            }
+        });
     }
 
     /**
      * 销毁实例
      */
     public void onDestroy() {
+        Log.d(TAG, "onDestroy: 销毁");
         RongIMClient.getInstance().disconnect();
         RongIMClient.getInstance().logout();
         RCRTCEngine.getInstance().unInit();
@@ -324,6 +389,7 @@ public class RongRTC {
             }
         }
         empty();
+        Log.d(TAG, "onDestroy: 销毁完成");
     }
 
     public void empty() {
@@ -337,7 +403,9 @@ public class RongRTC {
      * 选择管理员
      */
     private void selectAdmin() {
+        Log.d(TAG, "selectAdmin: 选择管理员》》》开始");
         if (!TextUtils.equals(myUserId, adminUserId) || mMembersMap.size() <= 1) return;
+        Log.d(TAG, "selectAdmin: 选择管理员》》》通过");
         UserInfo userInfo = mMembersMap.get(mMembers.get(1).userId);
         if (userInfo == null) return;
         RoomInfoMessage roomInfoMessage = new RoomInfoMessage(
@@ -359,15 +427,19 @@ public class RongRTC {
      * 离开房间
      */
     private void disconnect(String reason) {
+        Log.d(TAG, "disconnect: 准备离开房间");
         if (room != null) {
+            Log.d(TAG, "disconnect: 删除房间属性");
             room.deleteRoomAttributes(Collections.singletonList(myUserId), null, null);
         }
+        Log.d(TAG, "disconnect: 离开房间开始请求");
         RCRTCEngine.getInstance().leaveRoom(new IRCRTCResultCallback() {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
             public void onSuccess() {
+                Log.d(TAG, "disconnect: 离开房间成功");
                 if (UserUtils.IS_BENDI) {
-                    cancelScreenCast();
+                    cancelScreenCast();//取消共享屏幕
                 }
                 UserUtils.activity.runOnUiThread(new Runnable() {
                     @Override
@@ -388,7 +460,7 @@ public class RongRTC {
             @Override
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             public void onFailed(RTCErrorCode errorCode) {
-                FinLog.i(TAG, "quitRoom()->onUiFailed : " + errorCode);
+                Log.d(TAG, "disconnect: 离开房间失败》》" + errorCode);
                 if (UserUtils.IS_BENDI) {
                     cancelScreenCast();
                 }
@@ -407,6 +479,58 @@ public class RongRTC {
                 });
             }
         });
+    }
+
+    /**
+     * 取消屏幕投射
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public void cancelScreenCast() {
+        Log.d(TAG, "cancelScreenCast: 取消屏幕投射开始");
+        if (!isSharedServicesExist())
+            return;
+
+        Log.d(TAG, "cancelScreenCast: 取消屏幕投射视频流开始");
+        localUser.unpublishStream(screenOutputStream, new IRCRTCResultCallback() {
+            @Override
+            public void onSuccess() {
+                Log.d(TAG, "cancelScreenCast: 取消屏幕投射视频流成功");
+                screenCastHelper.stop();
+                screenCastHelper = null;
+                screenOutputStream = null;
+                if (serviceConnection != null) {
+                    Log.d(TAG, "cancelScreenCast: 取消屏幕投射服务");
+                    UserUtils.activity.unbindService(serviceConnection);
+                    serviceConnection = null;
+                }
+            }
+
+            @Override
+            public void onFailed(final RTCErrorCode errorCode) {
+                Log.d(TAG, "cancelScreenCast: 取消屏幕投射视频流失败》》" + errorCode);
+                screenCastHelper.stop();
+                screenCastHelper = null;
+                screenOutputStream = null;
+                if (serviceConnection != null) {
+                    Log.d(TAG, "cancelScreenCast: 取消屏幕投射服务");
+                    UserUtils.activity.unbindService(serviceConnection);
+                    serviceConnection = null;
+                }
+            }
+        });
+
+    }
+
+    /**
+     * 存在共享服务
+     *
+     * @return
+     */
+    public boolean isSharedServicesExist() {
+        if (screenOutputStream == null || screenCastHelper == null) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -578,8 +702,10 @@ public class RongRTC {
         UserUtils.activity.startActivity(intent);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private void initManager() {
-        HeadsetPlugReceiver.setOnHeadsetPlugListener(onHeadsetPlugListener);
+        HomeWatcherReceiver.registerHomeKeyReceiver(UserUtils.activity);//监听Home键
+        HeadsetPlugReceiver.setOnHeadsetPlugListener(onHeadsetPlugListener);//监听蓝牙耳机
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction("android.intent.action.HEADSET_PLUG");
         intentFilter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
@@ -751,54 +877,7 @@ public class RongRTC {
             @Override
             public void onSuccess() {
                 if (UserUtils.IS_BENDI) {
-                    RCRTCVideoStreamConfig.Builder videoConfigBuilder = RCRTCVideoStreamConfig.Builder.create();
-                    videoConfigBuilder.setVideoResolution(RCRTCParamsType.RCRTCVideoResolution.RESOLUTION_720_1280);
-                    videoConfigBuilder.setVideoFps(RCRTCParamsType.RCRTCVideoFps.Fps_10);
-                    screenOutputStream = RCRTCEngine.getInstance()
-                            .createVideoStream(RongRTCScreenCastHelper.VIDEO_TAG, videoConfigBuilder.build());
-                    RCRTCVideoView videoView = new RCRTCVideoView(UserUtils.activity);
-                    screenOutputStream.setVideoView(videoView);
-                    screenCastHelper = new RongRTCScreenCastHelper();
-                    if (Build.VERSION.SDK_INT > 28) { // 如果 SDK 版本大于28，需要启动一个前台service来录屏
-                        Intent service = new Intent(UserUtils.activity, ScreenCastService.class);
-                        serviceConnection = new ServiceConnection() {
-                            @Override
-                            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                                screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, data, 720, 1280);
-                                screenCastHelper.start();
-                            }
-
-                            @Override
-                            public void onServiceDisconnected(ComponentName componentName) {
-
-                            }
-                        };
-                        UserUtils.activity.bindService(service, serviceConnection, BIND_AUTO_CREATE);
-                    } else {
-                        screenCastHelper.init(UserUtils.activity.getApplicationContext(), screenOutputStream, data, 720, 1280);
-                        screenCastHelper.start();
-                    }
-
-                    localUser.publishStream(screenOutputStream, new IRCRTCResultCallback() {
-                        @Override
-                        public void onSuccess() {
-
-                        }
-
-                        @Override
-                        public void onFailed(RTCErrorCode errorCode) {
-                            UserUtils.activity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (errorCode.equals(RTCErrorCode.RongRTCCodeHttpTimeoutError)) {
-                                        publishResource();
-                                    } else {
-                                        loadSharing(false, errorCode.toString());
-                                    }
-                                }
-                            });
-                        }
-                    });
+                    postSharedVideo(data);
                 }
             }
 
@@ -898,6 +977,7 @@ public class RongRTC {
             }
         }
     };
+
     /**
      * 房间事件监听器
      */
@@ -985,6 +1065,7 @@ public class RongRTC {
         @Override
         public void onReceiveMessage(final io.rong.imlib.model.Message message) {
             UserUtils.activity.runOnUiThread(new Runnable() {
+                @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
                 @Override
                 public void run() {
                     MessageContent messageContent = message.getContent();
@@ -1169,28 +1250,6 @@ public class RongRTC {
         return "";
     }
 
-    /**
-     * 取消屏幕投射
-     */
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    private void cancelScreenCast() {
-        if (screenOutputStream == null || screenCastHelper != null) {
-            return;
-        }
-        screenCastHelper.stop();
-        screenCastHelper = null;
-        localUser.unpublishStream(screenOutputStream, new IRCRTCResultCallback() {
-            @Override
-            public void onSuccess() {
-                screenOutputStream = null;
-            }
-
-            @Override
-            public void onFailed(final RTCErrorCode errorCode) {
-                screenOutputStream = null;
-            }
-        });
-    }
 
     /**
      * 音频数据监听器

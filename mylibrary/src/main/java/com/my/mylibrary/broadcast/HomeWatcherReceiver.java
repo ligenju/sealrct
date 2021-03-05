@@ -53,6 +53,9 @@ public class HomeWatcherReceiver extends BroadcastReceiver {
                 RongRTC.newInstance().discontinueSharing("异常退出");
             }
 
+        } else if (Intent.ACTION_SCREEN_OFF.equals(action) && RongRTC.newInstance().isConnected()) {   // samsung 长按Home键
+            Log.i(LOG_TAG, "assist");
+            RongRTC.newInstance().discontinueSharing("异常退出");
         }
     }
 
@@ -62,7 +65,9 @@ public class HomeWatcherReceiver extends BroadcastReceiver {
         Log.i(LOG_TAG, "registerHomeKeyReceiver");
         if (mHomeKeyReceiver == null) {
             mHomeKeyReceiver = new HomeWatcherReceiver();
-            final IntentFilter homeFilter = new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
+            final IntentFilter homeFilter = new IntentFilter();
+            homeFilter.addAction(Intent.ACTION_SCREEN_OFF);
+            homeFilter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
             context.registerReceiver(mHomeKeyReceiver, homeFilter);
         }
     }

@@ -40,7 +40,7 @@ public class TestActivity extends AppCompatActivity {
             "android.permission.BLUETOOTH_ADMIN",
             "android.permission.BLUETOOTH"
     };
-    private int type = 0;
+    private int type = 3;
     private static final String TAG = "TestActivity";
 
     @Override
@@ -48,6 +48,7 @@ public class TestActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_test);
         RongRTC.newInstance().initConnectionStatusListener();
+        checkPermissions();
         findViewById(R.id.lin_ok).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
             @Override
@@ -64,7 +65,7 @@ public class TestActivity extends AppCompatActivity {
                 checkPermissions();
             }
         });
-        RongRTC.newInstance().setOnRongYunConnectionMonitoring(new OnRongYunConnectionMonitoring() {
+        RongRTC.setOnRongYunConnectionMonitoring(new OnRongYunConnectionMonitoring() {
             @Override
             public void onTokenFail() {
 
@@ -77,14 +78,10 @@ public class TestActivity extends AppCompatActivity {
 
             @Override
             public void onConnectedToTheRoomSuccessfully(boolean isShare, boolean isAdmin) {
-//                pauseMusic();
-                if (isShare) {
-//                    startActivity(new Intent(TestActivity.this, CameraActivity.class));
-                } else {
+                if (!isShare) {
                     Intent intent = new Intent(TestActivity.this, RongYunSeeActivity.class);
                     intent.putExtra("EXTRA_IS_MASTER", isAdmin);
                     startActivity(intent);
-//                    RongRTC.newInstance().startCallActivity(isAdmin);
                 }
             }
 
@@ -95,7 +92,6 @@ public class TestActivity extends AppCompatActivity {
 
             @Override
             public void onSuccessfullySubscribed() {
-//                showToast("成功订阅");
                 Log.d(TAG, "成功订阅");
             }
 
@@ -106,9 +102,9 @@ public class TestActivity extends AppCompatActivity {
 
             @Override
             public void onLoadSharing(boolean isSuccess, String msg) {
-                if (isSuccess){
-//                    startActivity(new Intent(TestActivity.this, CameraActivity.class));
-                }else {
+                if (isSuccess) {
+                    startActivity(new Intent(TestActivity.this, CameraActivity.class));
+                } else {
                     showToast(msg);
                 }
             }
@@ -168,7 +164,7 @@ public class TestActivity extends AppCompatActivity {
         if (unGrantedPermissions.size() == 0) { // 已经获得了所有权限，开始加入聊天室
             if (type == 1)
                 RongRTC.newInstance().getMediaProjectionService(TestActivity.this);
-            else
+            else if (type == 0)
                 RongRTC.newInstance().start(TestActivity.this, null, "RVHMoPiaLKvNUA+voneA9FjcrJI7YoQZnUY8m94JVxc=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", UserUtils.ROOMID, "查看者");
         } else { // 部分权限未获得，重新请求获取权限
             String[] array = new String[unGrantedPermissions.size()];
@@ -192,7 +188,7 @@ public class TestActivity extends AppCompatActivity {
         if (unGrantedPermissions.size() == 0) {
             if (type == 1)
                 RongRTC.newInstance().getMediaProjectionService(TestActivity.this);
-            else
+            else if (type == 0)
                 RongRTC.newInstance().start(TestActivity.this, null, "RVHMoPiaLKvNUA+voneA9FjcrJI7YoQZnUY8m94JVxc=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", UserUtils.ROOMID, "查看者");
         }
     }
@@ -203,19 +199,12 @@ public class TestActivity extends AppCompatActivity {
         if (!RongRTC.newInstance().isBy(requestCode, resultCode)) {
             return;
         }
-        RongRTC.newInstance().start(this, data, "RVHMoPiaLKvZcRsdkrdfAVjcrJI7YoQZsqcINLIIaFE=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", "123456", "播放者");
+        RongRTC.newInstance().start(this, data, "RVHMoPiaLKvZcRsdkrdfAVjcrJI7YoQZsqcINLIIaFE=@aqq0.cn.rongnav.com;aqq0.cn.rongcfg.com", UserUtils.ROOMID, "播放者");
     }
 
     @Override
     protected void onDestroy() {
         RongRTC.newInstance().onDestroy();
         super.onDestroy();
-    }
-
-    private void pauseMusic() {
-        Intent freshIntent = new Intent();
-        freshIntent.setAction("com.android.music.musicservicecommand.pause");
-        freshIntent.putExtra("command", "pause");
-        sendBroadcast(freshIntent);
     }
 }

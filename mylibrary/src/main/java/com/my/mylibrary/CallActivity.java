@@ -14,6 +14,7 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.media.AudioManager;
+import android.media.SoundPool;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -161,6 +162,7 @@ public class CallActivity extends AppCompatActivity implements OnHeadsetPlugList
     private boolean screenCastEnable = true;
 
     private List<StatusReport> statusReportList = new ArrayList<>();
+    private SoundPool mSoundPool;
     List<String> unGrantedPermissions;
 
     @Override
@@ -1742,6 +1744,10 @@ public class CallActivity extends AppCompatActivity implements OnHeadsetPlugList
         RCRTCMicOutputStream defaultAudioStream = RCRTCEngine.getInstance().getDefaultAudioStream();
         if (defaultAudioStream != null) {
             defaultAudioStream.setAudioDataListener(null);
+        }
+        if (mSoundPool != null) {
+            mSoundPool.release();
+            mSoundPool = null;
         }
         if (RongRTC.newInstance().getActivityList() != null && RongRTC.newInstance().getActivityList().size() > 0) {
             RongRTC.newInstance().getActivityList().clear();
